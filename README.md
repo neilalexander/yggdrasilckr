@@ -20,8 +20,24 @@ go build -o yggdrasilckr ./cmd/yggdrasilckr
 ./yggdrasilckr -useconffile ...
 ```
 
-The main change from the old tunnel routing/CKR support in v0.3.x is that you don't need to specify source subnets anymore. Filtering will automatically be applied based on your remote subnets, therefore you'll need to specify the correct remote subnets on both sides.
+... or generate an iOS framework with:
+
+```
+gomobile bind -target ios -tags mobile -o Yggdrasil.framework \
+  github.com/neilalexander/yggdrasilckr/src/mobile \
+  github.com/neilalexander/yggdrasilckr/src/config
+```
+
+... or generate an Android AAR bundle with:
+
+```
+gomobile bind -target android -tags mobile -o yggdrasil.aar \
+  github.com/neilalexander/yggdrasilckr/src/mobile \
+  github.com/neilalexander/yggdrasilckr/src/config
+```
+
+The main change from the old tunnel routing/CKR support in v0.3 is that you don't need to specify source subnets. Filtering will automatically be applied based on your remote subnets, therefore you'll need to specify the correct remote subnets on both sides.
 
 ## Warning
 
-This is provided without any warranty whatsoever and should be considered unsupported. Don't yell at me if it doesn't work.
+This is provided without any warranty whatsoever and should be considered to be completely unsupported. Don't yell at me if it doesn't work.
