@@ -24,15 +24,14 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/neilalexander/yggdrasilckr/src/ckriprwc"
 	"github.com/neilalexander/yggdrasilckr/src/config"
+	"github.com/neilalexander/yggdrasilckr/src/tuntap"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
 	"github.com/yggdrasil-network/yggdrasil-go/src/admin"
 	yggconfig "github.com/yggdrasil-network/yggdrasil-go/src/config"
-	"github.com/yggdrasil-network/yggdrasil-go/src/defaults"
-
 	"github.com/yggdrasil-network/yggdrasil-go/src/core"
+	"github.com/yggdrasil-network/yggdrasil-go/src/defaults"
 	"github.com/yggdrasil-network/yggdrasil-go/src/multicast"
-	"github.com/yggdrasil-network/yggdrasil-go/src/tuntap"
 	"github.com/yggdrasil-network/yggdrasil-go/src/version"
 )
 
@@ -78,7 +77,7 @@ func readConfig(log *log.Logger, useconf bool, useconffile string, normaliseconf
 	// of this is that any configuration item that is missing from the provided
 	// configuration will use a sane default.
 	cfg := &config.NodeConfig{
-		NodeConfig: *defaults.GenerateConfig(),
+		NodeConfig: defaults.GenerateConfig(),
 	}
 	var dat map[string]interface{}
 	if err := hjson.Unmarshal(conf, &dat); err != nil {
@@ -143,7 +142,7 @@ func readConfig(log *log.Logger, useconf bool, useconffile string, normaliseconf
 // with -genconf.
 func doGenconf(isjson bool) string {
 	cfg := &config.NodeConfig{
-		NodeConfig: *defaults.GenerateConfig(),
+		NodeConfig: defaults.GenerateConfig(),
 	}
 	var bs []byte
 	var err error
@@ -265,7 +264,7 @@ func run(args yggArgs, ctx context.Context, done chan struct{}) {
 		// Use an autoconf-generated config, this will give us random keys and
 		// port numbers, and will use an automatically selected TUN/TAP interface.
 		cfg = &config.NodeConfig{
-			NodeConfig: *defaults.GenerateConfig(),
+			NodeConfig: defaults.GenerateConfig(),
 		}
 	case args.useconffile != "" || args.useconf:
 		// Read the configuration from either stdin or from the filesystem
@@ -334,7 +333,7 @@ func run(args yggArgs, ctx context.Context, done chan struct{}) {
 	n := node{config: cfg}
 	// Now start Yggdrasil - this starts the DHT, router, switch and other core
 	// components needed for Yggdrasil to operate
-	if err = n.core.Start(&cfg.NodeConfig, logger); err != nil {
+	if err = n.core.Start(cfg.NodeConfig, logger); err != nil {
 		logger.Errorln("An error occurred during startup")
 		panic(err)
 	}
@@ -344,14 +343,14 @@ func run(args yggArgs, ctx context.Context, done chan struct{}) {
 	n.multicast = &multicast.Multicast{}
 	n.tuntap = &tuntap.TunAdapter{}
 	// Start the admin socket
-	if err := n.admin.Init(&n.core, &cfg.NodeConfig, logger, nil); err != nil {
+	if err := n.admin.Init(&n.core, cfg.NodeConfig, logger, nil); err != nil {
 		logger.Errorln("An error occurred initialising admin socket:", err)
 	} else if err := n.admin.Start(); err != nil {
 		logger.Errorln("An error occurred starting admin socket:", err)
 	}
 	n.admin.SetupAdminHandlers(n.admin)
 	// Start the multicast interface
-	if err := n.multicast.Init(&n.core, &cfg.NodeConfig, logger, nil); err != nil {
+	if err := n.multicast.Init(&n.core, cfg.NodeConfig, logger, nil); err != nil {
 		logger.Errorln("An error occurred initialising multicast:", err)
 	} else if err := n.multicast.Start(); err != nil {
 		logger.Errorln("An error occurred starting multicast:", err)
@@ -359,7 +358,7 @@ func run(args yggArgs, ctx context.Context, done chan struct{}) {
 	n.multicast.SetupAdminHandlers(n.admin)
 	// Start the TUN/TAP interface
 	rwc := ckriprwc.NewReadWriteCloser(&n.core, cfg, logger)
-	if err := n.tuntap.Init(rwc, &cfg.NodeConfig, logger, nil); err != nil {
+	if err := n.tuntap.Init(rwc, cfg.NodeConfig, logger, nil); err != nil {
 		logger.Errorln("An error occurred initialising TUN/TAP:", err)
 	} else if err := n.tuntap.Start(); err != nil {
 		logger.Errorln("An error occurred starting TUN/TAP:", err)

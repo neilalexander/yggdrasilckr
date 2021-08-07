@@ -3,7 +3,7 @@ package config
 import "github.com/yggdrasil-network/yggdrasil-go/src/config"
 
 type NodeConfig struct {
-	config.NodeConfig
+	*config.NodeConfig
 	TunnelRoutingConfig `json:"TunnelRouting"`
 }
 
