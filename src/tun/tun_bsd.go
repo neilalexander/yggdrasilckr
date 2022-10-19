@@ -1,6 +1,7 @@
+//go:build openbsd || freebsd
 // +build openbsd freebsd
 
-package tuntap
+package tun
 
 import (
 	"encoding/binary"

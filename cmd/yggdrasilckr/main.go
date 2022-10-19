@@ -8,11 +8,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
+	"sync"
 	"syscall"
 
 	"golang.org/x/text/encoding/unicode"
@@ -24,21 +26,20 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/neilalexander/yggdrasilckr/src/ckriprwc"
 	"github.com/neilalexander/yggdrasilckr/src/config"
-	"github.com/neilalexander/yggdrasilckr/src/tuntap"
+	"github.com/neilalexander/yggdrasilckr/src/tun"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
 	"github.com/yggdrasil-network/yggdrasil-go/src/admin"
-	yggconfig "github.com/yggdrasil-network/yggdrasil-go/src/config"
-	"github.com/yggdrasil-network/yggdrasil-go/src/core"
 	"github.com/yggdrasil-network/yggdrasil-go/src/defaults"
+
+	"github.com/yggdrasil-network/yggdrasil-go/src/core"
 	"github.com/yggdrasil-network/yggdrasil-go/src/multicast"
 	"github.com/yggdrasil-network/yggdrasil-go/src/version"
 )
 
 type node struct {
-	core      core.Core
-	config    *config.NodeConfig
-	tuntap    *tuntap.TunAdapter
+	core      *core.Core
+	tun       *tun.TunAdapter
 	multicast *multicast.Multicast
 	admin     *admin.AdminSocket
 }
@@ -51,10 +52,10 @@ func readConfig(log *log.Logger, useconf bool, useconffile string, normaliseconf
 	var err error
 	if useconffile != "" {
 		// Read the file from the filesystem
-		conf, err = ioutil.ReadFile(useconffile)
+		conf, err = os.ReadFile(useconffile)
 	} else {
 		// Read the file from stdin.
-		conf, err = ioutil.ReadAll(os.Stdin)
+		conf, err = io.ReadAll(os.Stdin)
 	}
 	if err != nil {
 		panic(err)
@@ -83,45 +84,6 @@ func readConfig(log *log.Logger, useconf bool, useconffile string, normaliseconf
 	if err := hjson.Unmarshal(conf, &dat); err != nil {
 		panic(err)
 	}
-	// Check if we have old field names
-	if old, ok := dat["SigningPrivateKey"]; ok {
-		log.Warnln("WARNING: The \"SigningPrivateKey\" configuration option has been renamed to \"PrivateKey\"")
-		if _, ok := dat["PrivateKey"]; !ok {
-			if privstr, err := hex.DecodeString(old.(string)); err == nil {
-				priv := ed25519.PrivateKey(privstr)
-				pub := priv.Public().(ed25519.PublicKey)
-				dat["PrivateKey"] = hex.EncodeToString(priv[:])
-				dat["PublicKey"] = hex.EncodeToString(pub[:])
-			} else {
-				log.Warnln("WARNING: The \"SigningPrivateKey\" configuration option contains an invalid value and will be ignored")
-			}
-		}
-	}
-	if oldmc, ok := dat["MulticastInterfaces"]; ok {
-		if oldmcvals, ok := oldmc.([]interface{}); ok {
-			var newmc []yggconfig.MulticastInterfaceConfig
-			for _, oldmcval := range oldmcvals {
-				if str, ok := oldmcval.(string); ok {
-					newmc = append(newmc, yggconfig.MulticastInterfaceConfig{
-						Regex:  str,
-						Beacon: true,
-						Listen: true,
-					})
-				}
-			}
-			if newmc != nil {
-				if oldport, ok := dat["LinkLocalTCPPort"]; ok {
-					// numbers parse to float64 by default
-					if port, ok := oldport.(float64); ok {
-						for idx := range newmc {
-							newmc[idx].Port = uint16(port)
-						}
-					}
-				}
-				dat["MulticastInterfaces"] = newmc
-			}
-		}
-	}
 	// Sanitise the config
 	confJson, err := json.Marshal(dat)
 	if err != nil {
@@ -141,9 +103,7 @@ func readConfig(log *log.Logger, useconf bool, useconffile string, normaliseconf
 // Generates a new configuration and returns it in HJSON format. This is used
 // with -genconf.
 func doGenconf(isjson bool) string {
-	cfg := &config.NodeConfig{
-		NodeConfig: defaults.GenerateConfig(),
-	}
+	cfg := defaults.GenerateConfig()
 	var bs []byte
 	var err error
 	if isjson {
@@ -186,14 +146,14 @@ func setLogLevel(loglevel string, logger *log.Logger) {
 type yggArgs struct {
 	genconf       bool
 	useconf       bool
-	useconffile   string
 	normaliseconf bool
 	confjson      bool
 	autoconf      bool
 	ver           bool
-	logto         string
 	getaddr       bool
 	getsnet       bool
+	useconffile   string
+	logto         string
 	loglevel      string
 }
 
@@ -226,8 +186,7 @@ func getArgs() yggArgs {
 }
 
 // The main function is responsible for configuring and starting Yggdrasil.
-func run(args yggArgs, ctx context.Context, done chan struct{}) {
-	defer close(done)
+func run(args yggArgs, ctx context.Context) {
 	// Create a new logger that logs output to stdout.
 	var logger *log.Logger
 	switch args.logto {
@@ -262,7 +221,7 @@ func run(args yggArgs, ctx context.Context, done chan struct{}) {
 		return
 	case args.autoconf:
 		// Use an autoconf-generated config, this will give us random keys and
-		// port numbers, and will use an automatically selected TUN/TAP interface.
+		// port numbers, and will use an automatically selected TUN interface.
 		cfg = &config.NodeConfig{
 			NodeConfig: defaults.GenerateConfig(),
 		}
@@ -325,45 +284,92 @@ func run(args yggArgs, ctx context.Context, done chan struct{}) {
 			fmt.Println(ipnet.String())
 		}
 		return
-	default:
 	}
 
-	// Setup the Yggdrasil node itself. The node{} type includes a Core, so we
-	// don't need to create this manually.
-	n := node{config: cfg}
-	// Now start Yggdrasil - this starts the DHT, router, switch and other core
-	// components needed for Yggdrasil to operate
-	if err = n.core.Start(cfg.NodeConfig, logger); err != nil {
-		logger.Errorln("An error occurred during startup")
-		panic(err)
+	n := &node{}
+
+	// Setup the Yggdrasil node itself.
+	{
+		sk, err := hex.DecodeString(cfg.PrivateKey)
+		if err != nil {
+			panic(err)
+		}
+		options := []core.SetupOption{
+			core.NodeInfo(cfg.NodeInfo),
+			core.NodeInfoPrivacy(cfg.NodeInfoPrivacy),
+		}
+		for _, addr := range cfg.Listen {
+			options = append(options, core.ListenAddress(addr))
+		}
+		for _, peer := range cfg.Peers {
+			options = append(options, core.Peer{URI: peer})
+		}
+		for intf, peers := range cfg.InterfacePeers {
+			for _, peer := range peers {
+				options = append(options, core.Peer{URI: peer, SourceInterface: intf})
+			}
+		}
+		for _, allowed := range cfg.AllowedPublicKeys {
+			k, err := hex.DecodeString(allowed)
+			if err != nil {
+				panic(err)
+			}
+			options = append(options, core.AllowedPublicKey(k[:]))
+		}
+		if n.core, err = core.New(sk[:], logger, options...); err != nil {
+			panic(err)
+		}
 	}
-	// Register the session firewall gatekeeper function
-	// Allocate our modules
-	n.admin = &admin.AdminSocket{}
-	n.multicast = &multicast.Multicast{}
-	n.tuntap = &tuntap.TunAdapter{}
-	// Start the admin socket
-	if err := n.admin.Init(&n.core, cfg.NodeConfig, logger, nil); err != nil {
-		logger.Errorln("An error occurred initialising admin socket:", err)
-	} else if err := n.admin.Start(); err != nil {
-		logger.Errorln("An error occurred starting admin socket:", err)
+
+	// Setup the admin socket.
+	{
+		options := []admin.SetupOption{
+			admin.ListenAddress(cfg.AdminListen),
+		}
+		if n.admin, err = admin.New(n.core, logger, options...); err != nil {
+			panic(err)
+		}
+		if n.admin != nil {
+			n.admin.SetupAdminHandlers()
+		}
 	}
-	n.admin.SetupAdminHandlers(n.admin)
-	// Start the multicast interface
-	if err := n.multicast.Init(&n.core, cfg.NodeConfig, logger, nil); err != nil {
-		logger.Errorln("An error occurred initialising multicast:", err)
-	} else if err := n.multicast.Start(); err != nil {
-		logger.Errorln("An error occurred starting multicast:", err)
+
+	// Setup the multicast module.
+	{
+		options := []multicast.SetupOption{}
+		for _, intf := range cfg.MulticastInterfaces {
+			options = append(options, multicast.MulticastInterface{
+				Regex:  regexp.MustCompile(intf.Regex),
+				Beacon: intf.Beacon,
+				Listen: intf.Listen,
+				Port:   intf.Port,
+			})
+		}
+		if n.multicast, err = multicast.New(n.core, logger, options...); err != nil {
+			panic(err)
+		}
+		if n.admin != nil && n.multicast != nil {
+			n.multicast.SetupAdminHandlers(n.admin)
+		}
 	}
-	n.multicast.SetupAdminHandlers(n.admin)
-	// Start the TUN/TAP interface
-	rwc := ckriprwc.NewReadWriteCloser(&n.core, cfg, logger)
-	if err := n.tuntap.Init(rwc, cfg.NodeConfig, logger, nil); err != nil {
-		logger.Errorln("An error occurred initialising TUN/TAP:", err)
-	} else if err := n.tuntap.Start(); err != nil {
-		logger.Errorln("An error occurred starting TUN/TAP:", err)
+
+	// Setup the TUN module.
+	{
+		options := []tun.SetupOption{
+			tun.InterfaceName(cfg.IfName),
+			tun.InterfaceMTU(cfg.IfMTU),
+		}
+
+		// TODO: refactor this!
+		rwc := ckriprwc.NewReadWriteCloser(n.core, cfg, logger)
+		if n.tun, err = tun.New(rwc, logger, options...); err != nil {
+			panic(err)
+		}
+		if n.admin != nil && n.tun != nil {
+			n.tun.SetupAdminHandlers(n.admin)
+		}
 	}
-	n.tuntap.SetupAdminHandlers(n.admin)
+
 	// Make some nice output that tells us what our IPv6 address and subnet are.
 	// This is just logged to stdout for the user.
 	address := n.core.Address()
@@ -372,40 +378,32 @@ func run(args yggArgs, ctx context.Context, done chan struct{}) {
 	logger.Infof("Your public key is %s", hex.EncodeToString(public[:]))
 	logger.Infof("Your IPv6 address is %s", address.String())
 	logger.Infof("Your IPv6 subnet is %s", subnet.String())
-	// Catch interrupts from the operating system to exit gracefully.
-	<-ctx.Done()
-	// Capture the service being stopped on Windows.
-	minwinsvc.SetOnExit(n.shutdown)
-	n.shutdown()
-}
 
-func (n *node) shutdown() {
+	// Block until we are told to shut down.
+	<-ctx.Done()
+
+	// Shut down the node.
 	_ = n.admin.Stop()
 	_ = n.multicast.Stop()
-	_ = n.tuntap.Stop()
+	_ = n.tun.Stop()
 	n.core.Stop()
 }
 
 func main() {
 	args := getArgs()
-	hup := make(chan os.Signal, 1)
-	//signal.Notify(hup, os.Interrupt, syscall.SIGHUP)
-	term := make(chan os.Signal, 1)
-	signal.Notify(term, os.Interrupt, syscall.SIGTERM)
-	for {
-		done := make(chan struct{})
-		ctx, cancel := context.WithCancel(context.Background())
-		go run(args, ctx, done)
-		select {
-		case <-hup:
-			cancel()
-			<-done
-		case <-term:
-			cancel()
-			<-done
-			return
-		case <-done:
-			return
-		}
-	}
+
+	// Catch interrupts from the operating system to exit gracefully.
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
+	// Capture the service being stopped on Windows.
+	minwinsvc.SetOnExit(cancel)
+
+	// Start the node, block and then wait for it to shut down.
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		run(args, ctx)
+	}()
+	wg.Wait()
 }
