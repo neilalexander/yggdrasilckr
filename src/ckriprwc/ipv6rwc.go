@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"fmt"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -251,11 +252,10 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 		if len(bs) > mtu {
 			if ip6 {
 				// Using bs would make it leak off the stack, so copy to buf
-				buf := make([]byte, 40)
-				copy(buf, bs)
+				buf := make([]byte, 512)
 				ptb := &icmp.PacketTooBig{
 					MTU:  mtu,
-					Data: buf[:40],
+					Data: buf[:copy(buf, bs)],
 				}
 				if packet, err := CreateICMPv6(buf[8:24], buf[24:40], ipv6.ICMPTypePacketTooBig, 0, ptb); err == nil {
 					_, _ = k.writePC(packet)
@@ -274,15 +274,23 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 			copy(srcAddr[:], bs[8:24])
 			addrlen = 16
 		}
-		info := k.update(ed25519.PublicKey(from.(iwt.Addr)))
+		srcKey := ed25519.PublicKey(from.(iwt.Addr))
+		info := k.update(srcKey)
 		if srcAddr != info.address && srcSubnet != info.subnet {
 			// check if it's a CKR source instead
-			if _, err := k.ckr.getPublicKeyForAddress(srcAddr, addrlen); err != nil {
-				continue
+			if addr, ok := netip.AddrFromSlice(srcAddr[:addrlen]); ok {
+				key, err := k.ckr.getPublicKeyForAddress(addr)
+				if err != nil {
+					return 0, err
+				}
+				if !key.Equal(srcKey) {
+					return 0, fmt.Errorf("unknown source address")
+				}
+			} else {
+				return 0, fmt.Errorf("invalid source address")
 			}
 		}
-		n = copy(p, bs)
-		return n, nil
+		return copy(p, bs), nil
 	}
 }
 
@@ -308,15 +316,22 @@ func (k *keyStore) writePC(bs []byte) (int, error) {
 		copy(dstSubnet[:], bs[24:40])
 		addrlen = 16
 	}
-	if key, err := k.ckr.getPublicKeyForAddress(dstAddr, addrlen); err == nil {
-		_, _ = k.core.WriteTo(bs, iwt.Addr(key))
-	} else if dstAddr.IsValid() {
+	switch {
+	case dstAddr.IsValid():
 		k.sendToAddress(dstAddr, bs)
-	} else if dstSubnet.IsValid() {
+	case dstSubnet.IsValid():
 		k.sendToSubnet(dstSubnet, bs)
-	} else {
-		return 0, errors.New("invalid destination address")
+	default:
+		if addr, ok := netip.AddrFromSlice(dstAddr[:addrlen]); ok {
+			key, err := k.ckr.getPublicKeyForAddress(addr)
+			if err != nil {
+				return 0, err
+			}
+			return k.core.WriteTo(bs, iwt.Addr(key))
+		}
+		return 0, fmt.Errorf("invalid destination address")
 	}
+
 	return len(bs), nil
 }
 

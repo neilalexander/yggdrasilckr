@@ -14,7 +14,7 @@ This is an Yggdrasil v0.4 build that re-adds tunnel routing/crypto-key routing (
   }
 ```
 
-Then use Go 1.16 to build and run:
+Then use Go 1.18 to build and run:
 ```
 go build -o yggdrasilckr ./cmd/yggdrasilckr
 ./yggdrasilckr -useconffile ...
