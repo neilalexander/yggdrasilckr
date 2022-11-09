@@ -281,13 +281,13 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 			if addr, ok := netip.AddrFromSlice(srcAddr[:addrlen]); ok {
 				key, err := k.ckr.getPublicKeyForAddress(addr)
 				if err != nil {
-					return 0, err
+					return 0, nil // err
 				}
 				if !key.Equal(srcKey) {
-					return 0, fmt.Errorf("unknown source address")
+					return 0, nil // fmt.Errorf("unknown source address")
 				}
 			} else {
-				return 0, fmt.Errorf("invalid source address")
+				return 0, nil // fmt.Errorf("invalid source address")
 			}
 		}
 		return copy(p, bs), nil
@@ -325,11 +325,11 @@ func (k *keyStore) writePC(bs []byte) (int, error) {
 		if addr, ok := netip.AddrFromSlice(dstAddr[:addrlen]); ok {
 			key, err := k.ckr.getPublicKeyForAddress(addr)
 			if err != nil {
-				return 0, err
+				return 0, nil // err
 			}
 			return k.core.WriteTo(bs, iwt.Addr(key))
 		}
-		return 0, fmt.Errorf("invalid destination address")
+		return 0, nil // fmt.Errorf("invalid destination address")
 	}
 
 	return len(bs), nil

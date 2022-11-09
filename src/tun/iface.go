@@ -35,6 +35,9 @@ func (tun *TunAdapter) write() {
 		if !tun.isEnabled {
 			continue // Nothing to do, the tun isn't enabled
 		}
+		if n == 0 {
+			continue // Invalid address probably
+		}
 		bs = buf[:TUN_OFFSET_BYTES+n]
 		if _, err = tun.iface.Write(bs, TUN_OFFSET_BYTES); err != nil {
 			tun.Act(nil, func() {
