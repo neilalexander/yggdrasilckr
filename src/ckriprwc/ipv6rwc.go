@@ -8,13 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gologme/log"
-
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv6"
 
 	iwt "github.com/Arceliar/ironwood/types"
-	"github.com/neilalexander/yggdrasilckr/src/config"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
 	"github.com/yggdrasil-network/yggdrasil-go/src/core"
@@ -22,19 +19,20 @@ import (
 
 const keyStoreTimeout = 2 * time.Minute
 
+/*
 // Out-of-band packet types
 const (
 	typeKeyDummy = iota // nolint:deadcode,varcheck
 	typeKeyLookup
 	typeKeyResponse
 )
+*/
 
 type keyArray [ed25519.PublicKeySize]byte
 
 type keyStore struct {
 	core         *core.Core
-	log          *log.Logger
-	ckr          *cryptokey
+	ckr          cryptokey
 	address      address.Address
 	subnet       address.Subnet
 	mutex        sync.Mutex
@@ -58,22 +56,17 @@ type buffer struct {
 	timeout *time.Timer
 }
 
-func (k *keyStore) init(c *core.Core, cfg *config.NodeConfig, log *log.Logger) {
+func (k *keyStore) init(c *core.Core) {
 	k.core = c
-	k.log = log
-	k.ckr = &cryptokey{
-		config: &cfg.TunnelRoutingConfig,
-		log:    log,
-	}
-	if err := k.ckr.configure(); err != nil {
-		panic(err)
-	}
 	k.address = *address.AddrForKey(k.core.PublicKey())
 	k.subnet = *address.SubnetForKey(k.core.PublicKey())
-	if err := k.core.SetOutOfBandHandler(k.oobHandler); err != nil {
+	/*if err := k.core.SetOutOfBandHandler(k.oobHandler); err != nil {
 		err = fmt.Errorf("tun.core.SetOutOfBandHander: %w", err)
 		panic(err)
-	}
+	}*/
+	k.core.SetPathNotify(func(key ed25519.PublicKey) {
+		k.update(key)
+	})
 	k.keyToInfo = make(map[keyArray]*keyInfo)
 	k.addrToInfo = make(map[address.Address]*keyInfo)
 	k.addrBuffer = make(map[address.Address]*buffer)
@@ -145,6 +138,7 @@ func (k *keyStore) update(key ed25519.PublicKey) *keyInfo {
 	var kArray keyArray
 	copy(kArray[:], key)
 	var info *keyInfo
+	var packets [][]byte
 	if info = k.keyToInfo[kArray]; info == nil {
 		info = new(keyInfo)
 		info.key = kArray
@@ -153,19 +147,19 @@ func (k *keyStore) update(key ed25519.PublicKey) *keyInfo {
 		k.keyToInfo[info.key] = info
 		k.addrToInfo[info.address] = info
 		k.subnetToInfo[info.subnet] = info
-		k.resetTimeout(info)
-		k.mutex.Unlock()
 		if buf := k.addrBuffer[info.address]; buf != nil {
-			_, _ = k.core.WriteTo(buf.packet, iwt.Addr(info.key[:]))
+			packets = append(packets, buf.packet)
 			delete(k.addrBuffer, info.address)
 		}
 		if buf := k.subnetBuffer[info.subnet]; buf != nil {
-			_, _ = k.core.WriteTo(buf.packet, iwt.Addr(info.key[:]))
+			packets = append(packets, buf.packet)
 			delete(k.subnetBuffer, info.subnet)
 		}
-	} else {
-		k.resetTimeout(info)
-		k.mutex.Unlock()
+	}
+	k.resetTimeout(info)
+	k.mutex.Unlock()
+	for _, packet := range packets {
+		_, _ = k.core.WriteTo(packet, iwt.Addr(info.key[:]))
 	}
 	return info
 }
@@ -189,7 +183,8 @@ func (k *keyStore) resetTimeout(info *keyInfo) {
 	})
 }
 
-func (k *keyStore) oobHandler(fromKey, toKey ed25519.PublicKey, data []byte) {
+/*
+func (k *keyStore) oobHandler(fromKey, toKey ed25519.PublicKey, data []byte) { // nolint:unused
 	if len(data) != 1+ed25519.SignatureSize {
 		return
 	}
@@ -210,18 +205,26 @@ func (k *keyStore) oobHandler(fromKey, toKey ed25519.PublicKey, data []byte) {
 		}
 	}
 }
+*/
 
 func (k *keyStore) sendKeyLookup(partial ed25519.PublicKey) {
-	sig := ed25519.Sign(k.core.PrivateKey(), partial[:])
-	bs := append([]byte{typeKeyLookup}, sig...)
-	_ = k.core.SendOutOfBand(partial, bs)
+	/*
+		sig := ed25519.Sign(k.core.PrivateKey(), partial[:])
+		bs := append([]byte{typeKeyLookup}, sig...)
+		//_ = k.core.SendOutOfBand(partial, bs)
+		_ = bs
+	*/
+	k.core.SendLookup(partial)
 }
 
-func (k *keyStore) sendKeyResponse(dest ed25519.PublicKey) {
+/*
+func (k *keyStore) sendKeyResponse(dest ed25519.PublicKey) { // nolint:unused
 	sig := ed25519.Sign(k.core.PrivateKey(), dest[:])
 	bs := append([]byte{typeKeyResponse}, sig...)
-	_ = k.core.SendOutOfBand(dest, bs)
+	//_ = k.core.SendOutOfBand(dest, bs)
+	_ = bs
 }
+*/
 
 func (k *keyStore) readPC(p []byte) (int, error) {
 	buf := make([]byte, k.core.MTU(), 65535)
@@ -238,59 +241,43 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 		if len(bs) == 0 {
 			continue
 		}
-		ip4 := bs[0]&0xf0 == 0x40
-		ip6 := bs[0]&0xf0 == 0x60
-		if !ip4 && !ip6 {
+		if bs[0]&0xf0 != 0x60 {
 			continue // not IPv6
 		}
-		if ip6 && len(bs) < 40 {
+		if len(bs) < 40 {
 			continue
 		}
 		k.mutex.Lock()
 		mtu := int(k.mtu)
 		k.mutex.Unlock()
 		if len(bs) > mtu {
-			if ip6 {
-				// Using bs would make it leak off the stack, so copy to buf
-				buf := make([]byte, 512)
-				ptb := &icmp.PacketTooBig{
-					MTU:  mtu,
-					Data: buf[:copy(buf, bs)],
-				}
-				if packet, err := CreateICMPv6(buf[8:24], buf[24:40], ipv6.ICMPTypePacketTooBig, 0, ptb); err == nil {
-					_, _ = k.writePC(packet)
-				}
+			// Using bs would make it leak off the stack, so copy to buf
+			buf := make([]byte, 512)
+			cn := copy(buf, bs)
+			ptb := &icmp.PacketTooBig{
+				MTU:  mtu,
+				Data: buf[:cn],
+			}
+			if packet, err := CreateICMPv6(buf[8:24], buf[24:40], ipv6.ICMPTypePacketTooBig, 0, ptb); err == nil {
+				_, _ = k.writePC(packet)
 			}
 			continue
 		}
-		var srcAddr address.Address
-		var srcSubnet address.Subnet
-		var addrlen int
-		switch {
-		case ip4:
-			copy(srcAddr[:], bs[12:16])
-			addrlen = 4
-		case ip6:
-			copy(srcAddr[:], bs[8:24])
-			addrlen = 16
+		var srcAddr, dstAddr address.Address
+		var srcSubnet, dstSubnet address.Subnet
+		copy(srcAddr[:], bs[8:])
+		copy(dstAddr[:], bs[24:])
+		copy(srcSubnet[:], bs[8:])
+		copy(dstSubnet[:], bs[24:])
+		if dstAddr != k.address && dstSubnet != k.subnet {
+			continue // bad local address/subnet
 		}
-		srcKey := ed25519.PublicKey(from.(iwt.Addr))
-		info := k.update(srcKey)
+		info := k.update(ed25519.PublicKey(from.(iwt.Addr)))
 		if srcAddr != info.address && srcSubnet != info.subnet {
-			// check if it's a CKR source instead
-			if addr, ok := netip.AddrFromSlice(srcAddr[:addrlen]); ok {
-				key, err := k.ckr.getPublicKeyForAddress(addr)
-				if err != nil {
-					return 0, nil // err
-				}
-				if !key.Equal(srcKey) {
-					return 0, nil // fmt.Errorf("unknown source address")
-				}
-			} else {
-				return 0, nil // fmt.Errorf("invalid source address")
-			}
+			continue // bad remote address/subnet
 		}
-		return copy(p, bs), nil
+		n = copy(p, bs)
+		return n, nil
 	}
 }
 
@@ -331,7 +318,6 @@ func (k *keyStore) writePC(bs []byte) (int, error) {
 		}
 		return 0, nil // fmt.Errorf("invalid destination address")
 	}
-
 	return len(bs), nil
 }
 
@@ -364,9 +350,9 @@ type ReadWriteCloser struct {
 	keyStore
 }
 
-func NewReadWriteCloser(c *core.Core, cfg *config.NodeConfig, log *log.Logger) *ReadWriteCloser {
+func NewReadWriteCloser(c *core.Core) *ReadWriteCloser {
 	rwc := new(ReadWriteCloser)
-	rwc.init(c, cfg, log)
+	rwc.init(c)
 	return rwc
 }
 

@@ -1,9 +1,9 @@
 package config
 
-import "github.com/yggdrasil-network/yggdrasil-go/src/config"
+import yggcfg "github.com/yggdrasil-network/yggdrasil-go/src/config"
 
 type NodeConfig struct {
-	*config.NodeConfig
+	*yggcfg.NodeConfig
 	TunnelRoutingConfig `json:"TunnelRouting"`
 }
 
