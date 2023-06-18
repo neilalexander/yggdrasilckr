@@ -241,16 +241,18 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 		if len(bs) == 0 {
 			continue
 		}
-		if bs[0]&0xf0 != 0x60 {
+		ip4 := bs[0]&0xf0 == 0x40
+		ip6 := bs[0]&0xf0 == 0x60
+		if !ip4 && !ip6 {
 			continue // not IPv6
 		}
-		if len(bs) < 40 {
+		if ip6 && len(bs) < 40 {
 			continue
 		}
 		k.mutex.Lock()
 		mtu := int(k.mtu)
 		k.mutex.Unlock()
-		if len(bs) > mtu {
+		if ip6 && len(bs) > mtu {
 			// Using bs would make it leak off the stack, so copy to buf
 			buf := make([]byte, 512)
 			cn := copy(buf, bs)
@@ -265,19 +267,40 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 		}
 		var srcAddr, dstAddr address.Address
 		var srcSubnet, dstSubnet address.Subnet
-		copy(srcAddr[:], bs[8:])
-		copy(dstAddr[:], bs[24:])
-		copy(srcSubnet[:], bs[8:])
-		copy(dstSubnet[:], bs[24:])
-		if dstAddr != k.address && dstSubnet != k.subnet {
-			continue // bad local address/subnet
+		var addrlen int
+		switch {
+		case ip4:
+			copy(srcAddr[:], bs[12:16])
+			addrlen = 4
+		case ip6:
+			copy(srcAddr[:], bs[8:])
+			copy(srcSubnet[:], bs[8:])
+			copy(dstAddr[:], bs[24:])
+			copy(dstSubnet[:], bs[24:])
+			addrlen = 16
 		}
-		info := k.update(ed25519.PublicKey(from.(iwt.Addr)))
-		if srcAddr != info.address && srcSubnet != info.subnet {
-			continue // bad remote address/subnet
+		srcKey := ed25519.PublicKey(from.(iwt.Addr))
+		info := k.update(srcKey)
+		switch {
+		case ip6 && dstAddr != k.address && dstSubnet != k.subnet:
+			return 0, nil
+		case ip4:
+			fallthrough
+		case ip6 && srcAddr != info.address && srcSubnet != info.subnet:
+			// check if it's a CKR source instead
+			if addr, ok := netip.AddrFromSlice(srcAddr[:addrlen]); ok {
+				key, err := k.ckr.getPublicKeyForAddress(addr)
+				if err != nil {
+					return 0, nil // err
+				}
+				if !key.Equal(srcKey) {
+					return 0, nil // fmt.Errorf("unknown source address")
+				}
+			} else {
+				return 0, nil // fmt.Errorf("invalid source address")
+			}
 		}
-		n = copy(p, bs)
-		return n, nil
+		return copy(p, bs), nil
 	}
 }
 
