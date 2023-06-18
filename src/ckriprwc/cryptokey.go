@@ -31,7 +31,11 @@ type route struct {
 }
 
 // Configure the CKR routes. This should only ever be ran by the TUN/TAP actor.
-func (c *cryptokey) configure() error {
+func (c *cryptokey) configure(config *config.TunnelRoutingConfig) error {
+	c.Lock()
+	c.config = config
+	c.Unlock()
+
 	// Set enabled/disabled state
 	c.setEnabled(c.config.Enable)
 	if !c.config.Enable {

@@ -8,9 +8,10 @@ import (
 
 	"github.com/gologme/log"
 	"github.com/neilalexander/yggdrasilckr/src/ckriprwc"
+	"github.com/neilalexander/yggdrasilckr/src/config"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
-	"github.com/yggdrasil-network/yggdrasil-go/src/config"
+	yggcfg "github.com/yggdrasil-network/yggdrasil-go/src/config"
 	"github.com/yggdrasil-network/yggdrasil-go/src/core"
 	"github.com/yggdrasil-network/yggdrasil-go/src/multicast"
 	"github.com/yggdrasil-network/yggdrasil-go/src/version"
@@ -43,7 +44,9 @@ func (m *Yggdrasil) StartJSON(configjson []byte) error {
 	logger.EnableLevel("error")
 	logger.EnableLevel("warn")
 	logger.EnableLevel("info")
-	m.config = config.GenerateConfig()
+	m.config = &config.NodeConfig{
+		NodeConfig: yggcfg.GenerateConfig(),
+	}
 	if err := m.config.UnmarshalHJSON(configjson); err != nil {
 		return err
 	}
@@ -95,7 +98,7 @@ func (m *Yggdrasil) StartJSON(configjson []byte) error {
 	}
 
 	mtu := m.config.IfMTU
-	m.iprwc = ckriprwc.NewReadWriteCloser(m.core)
+	m.iprwc = ckriprwc.NewReadWriteCloser(m.core, &m.config.TunnelRoutingConfig)
 	if m.iprwc.MaxMTU() < mtu {
 		mtu = m.iprwc.MaxMTU()
 	}
@@ -164,7 +167,9 @@ func (m *Yggdrasil) RetryPeersNow() {
 
 // GenerateConfigJSON generates mobile-friendly configuration in JSON format
 func GenerateConfigJSON() []byte {
-	nc := config.GenerateConfig()
+	nc := &config.NodeConfig{
+		NodeConfig: yggcfg.GenerateConfig(),
+	}
 	nc.IfName = "none"
 	if json, err := json.Marshal(nc); err == nil {
 		return json

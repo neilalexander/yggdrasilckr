@@ -19,10 +19,11 @@ import (
 	"github.com/hjson/hjson-go/v4"
 	"github.com/kardianos/minwinsvc"
 	"github.com/neilalexander/yggdrasilckr/src/ckriprwc"
+	"github.com/neilalexander/yggdrasilckr/src/config"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
 	"github.com/yggdrasil-network/yggdrasil-go/src/admin"
-	"github.com/yggdrasil-network/yggdrasil-go/src/config"
+	yggcfg "github.com/yggdrasil-network/yggdrasil-go/src/config"
 	"github.com/yggdrasil-network/yggdrasil-go/src/core"
 	"github.com/yggdrasil-network/yggdrasil-go/src/multicast"
 	"github.com/yggdrasil-network/yggdrasil-go/src/tun"
@@ -87,7 +88,9 @@ func main() {
 		setLogLevel(*loglevel, logger)
 	}
 
-	cfg := config.GenerateConfig()
+	cfg := &config.NodeConfig{
+		NodeConfig: yggcfg.GenerateConfig(),
+	}
 	var err error
 	switch {
 	case *ver:
@@ -264,7 +267,7 @@ func main() {
 
 	// Set up the IPRWC module.
 	{
-		n.iprwc = ckriprwc.NewReadWriteCloser(n.core)
+		n.iprwc = ckriprwc.NewReadWriteCloser(n.core, &cfg.TunnelRoutingConfig)
 	}
 
 	// Setup the TUN module.
