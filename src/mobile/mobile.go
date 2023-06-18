@@ -98,7 +98,7 @@ func (m *Yggdrasil) StartJSON(configjson []byte) error {
 	}
 
 	mtu := m.config.IfMTU
-	m.iprwc = ckriprwc.NewReadWriteCloser(m.core, &m.config.TunnelRoutingConfig)
+	m.iprwc = ckriprwc.NewReadWriteCloser(m.core, logger, &m.config.TunnelRoutingConfig)
 	if m.iprwc.MaxMTU() < mtu {
 		mtu = m.iprwc.MaxMTU()
 	}

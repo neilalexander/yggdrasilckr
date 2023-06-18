@@ -267,7 +267,7 @@ func main() {
 
 	// Set up the IPRWC module.
 	{
-		n.iprwc = ckriprwc.NewReadWriteCloser(n.core, &cfg.TunnelRoutingConfig)
+		n.iprwc = ckriprwc.NewReadWriteCloser(n.core, logger, &cfg.TunnelRoutingConfig)
 	}
 
 	// Setup the TUN module.

@@ -12,6 +12,7 @@ import (
 	"golang.org/x/net/ipv6"
 
 	iwt "github.com/Arceliar/ironwood/types"
+	"github.com/gologme/log"
 	"github.com/neilalexander/yggdrasilckr/src/config"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
@@ -374,8 +375,9 @@ type ReadWriteCloser struct {
 	keyStore
 }
 
-func NewReadWriteCloser(c *core.Core, config *config.TunnelRoutingConfig) *ReadWriteCloser {
+func NewReadWriteCloser(c *core.Core, log *log.Logger, config *config.TunnelRoutingConfig) *ReadWriteCloser {
 	rwc := new(ReadWriteCloser)
+	rwc.ckr.log = log
 	rwc.init(c)
 	if err := rwc.ckr.configure(config); err != nil {
 		panic(err)
