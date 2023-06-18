@@ -339,9 +339,10 @@ func (k *keyStore) writePC(bs []byte) (int, error) {
 			if err != nil {
 				return 0, nil // err
 			}
-			return k.core.WriteTo(bs, iwt.Addr(key))
+			return k.core.WriteTo(bs, iwt.Addr(key[:]))
+		} else {
+			return 0, nil
 		}
-		return 0, nil // fmt.Errorf("invalid destination address")
 	}
 	return len(bs), nil
 }

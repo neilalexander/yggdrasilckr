@@ -52,7 +52,7 @@ func (cfg *NodeConfig) ReadFrom(r io.Reader) (int64, error) {
 		return n, err
 	}
 	*cfg.NodeConfig = *yggcfg.GenerateConfig()
-	if err := cfg.UnmarshalHJSON(conf); err != nil {
+	if err := cfg.NodeConfig.UnmarshalHJSON(conf); err != nil {
 		return n, err
 	}
 	cfg.TunnelRoutingConfig = tunnelCfg.TunnelRoutingConfig

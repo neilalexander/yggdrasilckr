@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/go-syslog v1.0.0
 	github.com/hjson/hjson-go/v4 v4.3.0
 	github.com/kardianos/minwinsvc v1.0.2
-	github.com/yggdrasil-network/yggdrasil-go v0.4.8-0.20230618144504-5e684550a878
+	github.com/yggdrasil-network/yggdrasil-go v0.4.8-0.20230618171027-002b984c0450
 	golang.org/x/mobile v0.0.0-20221110043201-43a038452099
 	golang.org/x/net v0.9.0
 	golang.org/x/text v0.9.0
