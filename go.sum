@@ -39,8 +39,8 @@ github.com/vishvananda/netlink v1.1.0/go.mod h1:cTgwzPIzzgDAYoQrMm0EdrjRUBkTqKYp
 github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df/go.mod h1:JP3t17pCcGlemwknint6hfoeCVQrEMVwxRLRjXpq+BU=
 github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f h1:p4VB7kIXpOQvVn1ZaTIVp+3vuYAXFe3OJEvjbUYJLaA=
 github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=
-github.com/yggdrasil-network/yggdrasil-go v0.4.8-0.20230523213910-2eda59d9e4cd h1:P1z/dZDAJkILSKJ2STlcaSaVZMp1z7yKSbuLm4bQzbM=
-github.com/yggdrasil-network/yggdrasil-go v0.4.8-0.20230523213910-2eda59d9e4cd/go.mod h1:6eAAsky+yBdiQxaK41sCSWwW0K2Uv8SaKK8ztYMrjEM=
+github.com/yggdrasil-network/yggdrasil-go v0.4.8-0.20230618144504-5e684550a878 h1:RJ5rdSQgJxZkKqPGrvT3jhOTj4DpzbQP5fdOzSl0pcs=
+github.com/yggdrasil-network/yggdrasil-go v0.4.8-0.20230618144504-5e684550a878/go.mod h1:6eAAsky+yBdiQxaK41sCSWwW0K2Uv8SaKK8ztYMrjEM=
 github.com/yuin/goldmark v1.4.0/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=

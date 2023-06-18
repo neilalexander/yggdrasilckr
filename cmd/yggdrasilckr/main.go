@@ -19,20 +19,20 @@ import (
 	"github.com/hjson/hjson-go/v4"
 	"github.com/kardianos/minwinsvc"
 	"github.com/neilalexander/yggdrasilckr/src/ckriprwc"
-	ckrtun "github.com/neilalexander/yggdrasilckr/src/tun"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
 	"github.com/yggdrasil-network/yggdrasil-go/src/admin"
 	"github.com/yggdrasil-network/yggdrasil-go/src/config"
 	"github.com/yggdrasil-network/yggdrasil-go/src/core"
 	"github.com/yggdrasil-network/yggdrasil-go/src/multicast"
+	"github.com/yggdrasil-network/yggdrasil-go/src/tun"
 	"github.com/yggdrasil-network/yggdrasil-go/src/version"
 )
 
 type node struct {
 	core      *core.Core
 	iprwc     *ckriprwc.ReadWriteCloser
-	tun       *ckrtun.TunAdapter
+	tun       *tun.TunAdapter
 	multicast *multicast.Multicast
 	admin     *admin.AdminSocket
 }
@@ -134,6 +134,8 @@ func main() {
 		if *getaddr || *getsnet {
 			fmt.Println("\nError: You need to specify some config data using -useconf or -useconffile.")
 		}
+
+		return
 	}
 
 	privateKey := ed25519.PrivateKey(cfg.PrivateKey)
@@ -267,11 +269,11 @@ func main() {
 
 	// Setup the TUN module.
 	{
-		options := []ckrtun.SetupOption{
-			ckrtun.InterfaceName(cfg.IfName),
-			ckrtun.InterfaceMTU(cfg.IfMTU),
+		options := []tun.SetupOption{
+			tun.InterfaceName(cfg.IfName),
+			tun.InterfaceMTU(cfg.IfMTU),
 		}
-		if n.tun, err = ckrtun.New(n.iprwc, logger, options...); err != nil {
+		if n.tun, err = tun.New(n.iprwc, logger, options...); err != nil {
 			panic(err)
 		}
 		if n.admin != nil && n.tun != nil {
