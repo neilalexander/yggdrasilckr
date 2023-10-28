@@ -31,10 +31,17 @@ type route struct {
 }
 
 // Configure the CKR routes. This should only ever be ran by the TUN/TAP actor.
-func (c *cryptokey) configure() error {
+func (c *cryptokey) configure(config *config.TunnelRoutingConfig) error {
+	c.Lock()
+	c.config = config
+	c.Unlock()
+
+	c.log.Printf("Config: %+v\n", config)
+
 	// Set enabled/disabled state
 	c.setEnabled(c.config.Enable)
 	if !c.config.Enable {
+		c.log.Println("Tunnel routing is disabled")
 		return nil
 	}
 
@@ -46,12 +53,16 @@ func (c *cryptokey) configure() error {
 	for ipv6, pubkey := range c.config.IPv6RemoteSubnets {
 		if err := c.addRemoteSubnet(ipv6, pubkey); err != nil {
 			return fmt.Errorf("Error adding routed IPv6 subnet: %w", err)
+		} else {
+			c.log.Println("Remote subnet:", ipv6)
 		}
 	}
 
 	for ipv4, pubkey := range c.config.IPv4RemoteSubnets {
 		if err := c.addRemoteSubnet(ipv4, pubkey); err != nil {
 			return fmt.Errorf("Error adding routed IPv4 subnet: %w", err)
+		} else {
+			c.log.Println("Remote subnet:", ipv4)
 		}
 	}
 
