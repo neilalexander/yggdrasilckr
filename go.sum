@@ -1,5 +1,5 @@
-github.com/Arceliar/ironwood v0.0.0-20231126105342-ad38416a77c8 h1:qyXiPZClVoe6QsbsiDP23g0Ze/MNXiHIAL/nVNfauH0=
-github.com/Arceliar/ironwood v0.0.0-20231126105342-ad38416a77c8/go.mod h1:5x7fWW0mshe9WQ1lvSMmmHBYC3BeHH9gpwW5tz7cbfw=
+github.com/Arceliar/ironwood v0.0.0-20231127131626-465b82dfb5bd h1:458tnmZ4zM2gbLtefdYbaxyAJevDNEWu6tLKEqbK4wg=
+github.com/Arceliar/ironwood v0.0.0-20231127131626-465b82dfb5bd/go.mod h1:5x7fWW0mshe9WQ1lvSMmmHBYC3BeHH9gpwW5tz7cbfw=
 github.com/Arceliar/phony v0.0.0-20220903101357-530938a4b13d h1:UK9fsWbWqwIQkMCz1CP+v5pGbsGoWAw6g4AyvMpm1EM=
 github.com/Arceliar/phony v0.0.0-20220903101357-530938a4b13d/go.mod h1:BCnxhRf47C/dy/e/D2pmB8NkB3dQVIrkD98b220rx5Q=
 github.com/bits-and-blooms/bitset v1.3.1/go.mod h1:gIdJ4wp64HaoK2YrL1Q5/N7Y16edYb8uY+O0FJTyyDA=
@@ -48,8 +48,8 @@ github.com/vishvananda/netlink v1.1.0/go.mod h1:cTgwzPIzzgDAYoQrMm0EdrjRUBkTqKYp
 github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df/go.mod h1:JP3t17pCcGlemwknint6hfoeCVQrEMVwxRLRjXpq+BU=
 github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f h1:p4VB7kIXpOQvVn1ZaTIVp+3vuYAXFe3OJEvjbUYJLaA=
 github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=
-github.com/yggdrasil-network/yggdrasil-go v0.5.3 h1:tfAajYmaiS1L9XevdEC1VUpScpgFfCW7/oEEWxdv5aM=
-github.com/yggdrasil-network/yggdrasil-go v0.5.3/go.mod h1:qRzHB8bKEIpd1pQVYoZ+SedJJTBG0X9sbyctWxQDDGA=
+github.com/yggdrasil-network/yggdrasil-go v0.5.4 h1:A7ZFmxkkbZhtqJgQXBVDw5sHsi25aUawLlJCCHnNsAs=
+github.com/yggdrasil-network/yggdrasil-go v0.5.4/go.mod h1:TLmU4X0nfzCY9t5xABtFQ6GLoOtCae8xVatC9JwjD5I=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 go.uber.org/mock v0.3.0 h1:3mUxI1No2/60yUYax92Pt8eNOEecx2D3lcXZh2NEZJo=
 go.uber.org/mock v0.3.0/go.mod h1:a6FSlNadKUHUa9IP5Vyt1zh4fC7uAwxMutEAscFbkZc=

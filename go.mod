@@ -3,12 +3,12 @@ module github.com/neilalexander/yggdrasilckr
 go 1.20
 
 require (
-	github.com/Arceliar/ironwood v0.0.0-20231126105342-ad38416a77c8
+	github.com/Arceliar/ironwood v0.0.0-20231127131626-465b82dfb5bd
 	github.com/gologme/log v1.3.0
 	github.com/hashicorp/go-syslog v1.0.0
 	github.com/hjson/hjson-go/v4 v4.3.0
 	github.com/kardianos/minwinsvc v1.0.2
-	github.com/yggdrasil-network/yggdrasil-go v0.5.3
+	github.com/yggdrasil-network/yggdrasil-go v0.5.4
 	golang.org/x/mobile v0.0.0-20231006135142-2b44d11868fe
 	golang.org/x/net v0.17.0
 	golang.org/x/text v0.13.0
