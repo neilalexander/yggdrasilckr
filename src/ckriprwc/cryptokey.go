@@ -8,7 +8,6 @@ import (
 	"net/netip"
 	"sort"
 	"sync"
-	"sync/atomic"
 
 	"github.com/gologme/log"
 
@@ -17,12 +16,11 @@ import (
 )
 
 type cryptokey struct {
-	log     *log.Logger
-	config  *config.TunnelRoutingConfig
-	enabled atomic.Value // bool
-	sync.RWMutex
-	v4Routes []*route
-	v6Routes []*route
+	log          *log.Logger
+	sync.RWMutex // Protects the below.
+	config       *config.TunnelRoutingConfig
+	v4Routes     []*route
+	v6Routes     []*route
 }
 
 type route struct {
@@ -33,117 +31,112 @@ type route struct {
 // Configure the CKR routes. This should only ever be ran by the TUN/TAP actor.
 func (c *cryptokey) configure(config *config.TunnelRoutingConfig) error {
 	c.Lock()
-	c.config = config
-	c.Unlock()
+	defer c.Unlock()
 
-	c.log.Printf("Config: %+v\n", config)
-
-	// Set enabled/disabled state
-	c.setEnabled(c.config.Enable)
-	if !c.config.Enable {
-		c.log.Println("Tunnel routing is disabled")
+	if c.config = config; !c.config.Enable {
 		return nil
 	}
 
-	c.Lock()
 	c.v4Routes = make([]*route, 0, len(c.config.IPv4RemoteSubnets))
 	c.v6Routes = make([]*route, 0, len(c.config.IPv6RemoteSubnets))
-	c.Unlock()
 
 	for ipv6, pubkey := range c.config.IPv6RemoteSubnets {
-		if err := c.addRemoteSubnet(ipv6, pubkey); err != nil {
+		if err := c._addRemoteSubnet(ipv6, pubkey); err != nil {
 			return fmt.Errorf("Error adding routed IPv6 subnet: %w", err)
-		} else {
-			c.log.Println("Remote subnet:", ipv6)
 		}
 	}
 
 	for ipv4, pubkey := range c.config.IPv4RemoteSubnets {
-		if err := c.addRemoteSubnet(ipv4, pubkey); err != nil {
+		if err := c._addRemoteSubnet(ipv4, pubkey); err != nil {
 			return fmt.Errorf("Error adding routed IPv4 subnet: %w", err)
-		} else {
-			c.log.Println("Remote subnet:", ipv4)
+		}
+	}
+
+	if len(c.v6Routes) > 0 {
+		sort.Slice(c.v6Routes, func(i, j int) bool {
+			return sortRoutes(c.v6Routes, i, j)
+		})
+
+		c.log.Println("Active IPv6 routes:")
+		for _, r := range c.v6Routes {
+			c.log.Println(" -", r.prefix, "via", hex.EncodeToString(r.destination))
+		}
+	}
+
+	if len(c.v4Routes) > 0 {
+		sort.Slice(c.v4Routes, func(i, j int) bool {
+			return sortRoutes(c.v4Routes, i, j)
+		})
+
+		c.log.Println("Active IPv4 routes:")
+		for _, r := range c.v4Routes {
+			c.log.Println(" -", r.prefix, "via", hex.EncodeToString(r.destination))
 		}
 	}
 
 	return nil
 }
 
-// Enable or disable crypto-key routing.
-func (c *cryptokey) setEnabled(enabled bool) {
-	c.enabled.Store(enabled)
-}
-
-// Check if crypto-key routing is enabled.
-func (c *cryptokey) isEnabled() bool {
-	enabled, ok := c.enabled.Load().(bool)
-	return ok && enabled
-}
-
 // Adds a destination route for the given CIDR to be tunnelled to the node
-// with the given BoxPubKey.
-func (c *cryptokey) addRemoteSubnet(cidr string, dest string) error {
+// with the given BoxPubKey. Write lock must be held.
+func (c *cryptokey) _addRemoteSubnet(cidr string, dest string) error {
 	prefix, err := netip.ParsePrefix(cidr)
 	if err != nil {
 		return err
 	}
-	if isYggdrasilDestination(prefix.Addr()) {
-		return errors.New("can't specify Yggdrasil destination as routed subnet")
+
+	bpk, err := hex.DecodeString(dest)
+	if err != nil {
+		return fmt.Errorf("hex.DecodeString: %w", err)
+	} else if len(bpk) != ed25519.PublicKeySize {
+		return fmt.Errorf("incorrect key length for %q", dest)
 	}
 
-	c.Lock()
-	defer c.Unlock()
-
+	is4, is6 := prefix.Addr().Is4(), prefix.Addr().Is6()
 	switch {
-	case prefix.Addr().Is6():
+	case is6:
+		if isYggdrasilDestination(prefix.Addr()) {
+			return errors.New("can't specify Yggdrasil destination as routed subnet")
+		}
 		for _, route := range c.v6Routes {
 			if route.prefix == prefix {
 				return fmt.Errorf("remote subnet already exists for %s", cidr)
 			}
 		}
+		c.v6Routes = append(c.v6Routes, &route{
+			prefix:      prefix,
+			destination: append(ed25519.PublicKey{}, bpk...),
+		})
 
-	case prefix.Addr().Is4():
+	case is4:
 		for _, route := range c.v4Routes {
 			if route.prefix == prefix {
 				return fmt.Errorf("remote subnet already exists for %s", cidr)
 			}
 		}
+		c.v4Routes = append(c.v4Routes, &route{
+			prefix:      prefix,
+			destination: append(ed25519.PublicKey{}, bpk...),
+		})
 
 	default:
 		return fmt.Errorf("unexpected prefix size")
 	}
 
-	if bpk, err := hex.DecodeString(dest); err != nil {
-		return fmt.Errorf("hex.DecodeString: %w", err)
-	} else {
-		destination := make(ed25519.PublicKey, ed25519.PublicKeySize)
-		if copy(destination[:], bpk) != ed25519.PublicKeySize {
-			return fmt.Errorf("incorrect key length for %q", dest)
-		}
+	return nil
+}
 
-		switch {
-		case prefix.Addr().Is6():
-			c.v6Routes = append(c.v6Routes, &route{
-				prefix:      prefix,
-				destination: destination,
-			})
-			sort.Slice(c.v6Routes, func(i, j int) bool {
-				return c.v6Routes[i].prefix.Bits() > c.v6Routes[j].prefix.Bits()
-			})
-			c.log.Infoln("Added routed IPv6 subnet", cidr)
-
-		case prefix.Addr().Is4():
-			c.v4Routes = append(c.v4Routes, &route{
-				prefix:      prefix,
-				destination: destination,
-			})
-			sort.Slice(c.v4Routes, func(i, j int) bool {
-				return c.v4Routes[i].prefix.Bits() > c.v4Routes[j].prefix.Bits()
-			})
-			c.log.Infoln("Added routed IPv4 subnet", cidr)
-		}
-
-		return nil
+// Sorts the routes so that the most specific prefixes always come before
+// the less specific ones.
+func sortRoutes(route []*route, i, j int) bool {
+	pli, plj := route[i].prefix.Bits(), route[j].prefix.Bits()
+	switch {
+	case pli > plj:
+		return true
+	case pli < plj:
+		return false
+	default:
+		return route[i].prefix.Addr().Less(route[j].prefix.Addr())
 	}
 }
 
@@ -151,10 +144,8 @@ func (c *cryptokey) addRemoteSubnet(cidr string, dest string) error {
 // length specified in bytes) from the crypto-key routing table. An error is
 // returned if the address is not suitable or no route was found.
 func (c *cryptokey) getPublicKeyForAddress(addr netip.Addr) (ed25519.PublicKey, error) {
-	if !c.isEnabled() {
-		return nil, fmt.Errorf("CKR not enabled")
-	}
-	if isYggdrasilDestination(addr) {
+	is4, is6 := addr.Is4(), addr.Is6()
+	if is6 && isYggdrasilDestination(addr) {
 		return nil, fmt.Errorf("can't get public key for Yggdrasil route")
 	}
 
@@ -162,14 +153,14 @@ func (c *cryptokey) getPublicKeyForAddress(addr netip.Addr) (ed25519.PublicKey, 
 	defer c.RUnlock()
 
 	switch {
-	case addr.Is6():
+	case is6:
 		for _, route := range c.v6Routes {
 			if route.prefix.Contains(addr) {
 				return route.destination, nil
 			}
 		}
 
-	case addr.Is4():
+	case is4:
 		for _, route := range c.v4Routes {
 			if route.prefix.Contains(addr) {
 				return route.destination, nil
