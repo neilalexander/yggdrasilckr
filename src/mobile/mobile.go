@@ -14,6 +14,7 @@ import (
 	yggcfg "github.com/yggdrasil-network/yggdrasil-go/src/config"
 	"github.com/yggdrasil-network/yggdrasil-go/src/core"
 	"github.com/yggdrasil-network/yggdrasil-go/src/multicast"
+	"github.com/yggdrasil-network/yggdrasil-go/src/tun"
 	"github.com/yggdrasil-network/yggdrasil-go/src/version"
 
 	_ "golang.org/x/mobile/bind"
@@ -29,7 +30,9 @@ type Yggdrasil struct {
 	iprwc     *ckriprwc.ReadWriteCloser
 	config    *config.NodeConfig
 	multicast *multicast.Multicast
+	tun       *tun.TunAdapter // optional
 	log       MobileLogger
+	logger    *log.Logger
 }
 
 // StartAutoconfigure starts a node with a randomly generated config
@@ -40,10 +43,13 @@ func (m *Yggdrasil) StartAutoconfigure() error {
 // StartJSON starts a node with the given JSON config. You can get JSON config
 // (rather than HJSON) by using the GenerateConfigJSON() function
 func (m *Yggdrasil) StartJSON(configjson []byte) error {
+	setMemLimitIfPossible()
+
 	logger := log.New(m.log, "", 0)
 	logger.EnableLevel("error")
 	logger.EnableLevel("warn")
 	logger.EnableLevel("info")
+	m.logger = logger
 	m.config = &config.NodeConfig{
 		NodeConfig: yggcfg.GenerateConfig(),
 	}
