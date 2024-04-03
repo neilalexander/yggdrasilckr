@@ -1,5 +1,5 @@
-//go:build ios
-// +build ios
+//go:build ios || macos
+// +build ios macos
 
 package mobile
 
