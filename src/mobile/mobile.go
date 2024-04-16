@@ -208,18 +208,17 @@ func (m *Yggdrasil) GetPeersJSON() (result string) {
 		IP string
 	}{}
 	for _, v := range m.core.GetPeers() {
-		if v.Key == nil {
-			continue
-		}
-		a := address.AddrForKey(v.Key)
-		ip := net.IP(a[:]).String()
-		peers = append(peers, struct {
+		peer := struct {
 			core.PeerInfo
 			IP string
 		}{
 			PeerInfo: v,
-			IP:       ip,
-		})
+		}
+		if v.Key != nil {
+			a := address.AddrForKey(v.Key)
+			peer.IP = net.IP(a[:]).String()
+		}
+		peers = append(peers, peer)
 	}
 	if res, err := json.Marshal(peers); err == nil {
 		return string(res)
