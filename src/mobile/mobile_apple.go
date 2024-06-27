@@ -1,5 +1,5 @@
-//go:build ios || macos
-// +build ios macos
+//go:build ios || darwin
+// +build ios darwin
 
 package mobile
 
