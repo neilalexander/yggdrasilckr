@@ -11,9 +11,9 @@ require (
 	github.com/hjson/hjson-go/v4 v4.4.0
 	github.com/kardianos/minwinsvc v1.0.2
 	github.com/yggdrasil-network/yggdrasil-go v0.5.6
-	golang.org/x/mobile v0.0.0-20240520174638-fa72addaaa1b
-	golang.org/x/net v0.25.0
-	golang.org/x/text v0.15.0
+	golang.org/x/mobile v0.0.0-20240604190613-2782386b8afd
+	golang.org/x/net v0.26.0
+	golang.org/x/text v0.16.0
 )
 
 require (
@@ -27,12 +27,12 @@ require (
 	github.com/vishvananda/netlink v1.1.0 // indirect
 	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 	go.uber.org/mock v0.4.0 // indirect
-	golang.org/x/crypto v0.23.0 // indirect
+	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
-	golang.org/x/mod v0.17.0 // indirect
+	golang.org/x/mod v0.18.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/tools v0.21.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/tools v0.22.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20230223181233-21636207a675 // indirect
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
