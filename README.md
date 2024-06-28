@@ -5,11 +5,11 @@ This is a special Yggdrasil build that re-adds tunnel routing/crypto-key routing
 ```
   TunnelRouting: {
     Enable: true
-    IPv4RemoteSubnets: {
-      "a.a.a.a/a": remotepublickey
-    }
-    IPv6RemoteSubnets: {
-      "b::b/b": remotepublickey
+    RemoteSubnets: {
+      "remotepublickey": [
+        "a.a.a.a/a",
+        "b::b/b"
+      ]
     }
   }
 ```
@@ -17,6 +17,7 @@ This is a special Yggdrasil build that re-adds tunnel routing/crypto-key routing
 ... and then add the same routes to your operating system routing table to point to the Yggdrasil TUN adapter.
 
 Then use Go 1.20 to build and run:
+
 ```
 go build -o yggdrasilckr ./cmd/yggdrasilckr
 ./yggdrasilckr -useconffile ...

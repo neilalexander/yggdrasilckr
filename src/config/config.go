@@ -17,9 +17,10 @@ type NodeConfig struct {
 // TunnelRoutingConfig contains the crypto-key routing tables for tunneling regular
 // IPv4 or IPv6 subnets across the Yggdrasil network.
 type TunnelRoutingConfig struct {
-	Enable            bool              `comment:"Enable or disable tunnel routing."`
-	IPv6RemoteSubnets map[string]string `comment:"IPv6 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"aaaa:bbbb:cccc::/e\": \"boxpubkey\", ... }"`
-	IPv4RemoteSubnets map[string]string `comment:"IPv4 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"a.b.c.d/e\": \"boxpubkey\", ... }"`
+	Enable            bool                `comment:"Enable or disable tunnel routing."`
+	RemoteSubnets     map[string][]string `comment:"IPv4 or IPv6 subnets belonging to remote nodes by public key, e.g.\n{ \"boxpubkey\": [ \"a.b.c.d/e\", \"aaaa:bbbb:cccc::/e\" ] }"`
+	IPv6RemoteSubnets map[string]string   `json:"-" comment:"IPv6 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"aaaa:bbbb:cccc::/e\": \"boxpubkey\", ... }"`
+	IPv4RemoteSubnets map[string]string   `json:"-" comment:"IPv4 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"a.b.c.d/e\": \"boxpubkey\", ... }"`
 }
 
 func (cfg *NodeConfig) ReadFrom(r io.Reader) (int64, error) {

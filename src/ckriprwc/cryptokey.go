@@ -52,6 +52,14 @@ func (c *cryptokey) configure(config *config.TunnelRoutingConfig) error {
 		}
 	}
 
+	for pubkey, ips := range c.config.RemoteSubnets {
+		for _, ip := range ips {
+			if err := c._addRemoteSubnet(ip, pubkey); err != nil {
+				return fmt.Errorf("Error adding routed subnet: %w", err)
+			}
+		}
+	}
+
 	if len(c.v6Routes) > 0 {
 		sort.Slice(c.v6Routes, func(i, j int) bool {
 			return sortRoutes(c.v6Routes, i, j)

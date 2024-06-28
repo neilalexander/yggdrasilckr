@@ -1,6 +1,7 @@
 package mobile
 
 import (
+	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
 	"net"
@@ -250,4 +251,30 @@ func (m *Yggdrasil) GetMTU() int {
 
 func GetVersion() string {
 	return version.BuildVersion()
+}
+
+type YggdrasilSummary struct {
+	PublicKey   string
+	IPv6Address string
+	IPv6Subnet  string
+}
+
+func SummaryForConfig(b []byte) *YggdrasilSummary {
+	var cfg yggcfg.NodeConfig
+	if err := cfg.UnmarshalHJSON(b); err != nil {
+		return &YggdrasilSummary{
+			PublicKey:   "Unknown",
+			IPv6Address: "Unknown",
+			IPv6Subnet:  "Unknown",
+		}
+	}
+	pk := ed25519.PrivateKey(cfg.PrivateKey).Public().(ed25519.PublicKey)
+	addr := net.IP(address.AddrForKey(pk)[:])
+	subnet := append(address.SubnetForKey(pk)[:], 0, 0, 0, 0, 0, 0, 0, 0)
+	ipnet := net.IPNet{IP: subnet, Mask: net.CIDRMask(64, 128)}
+	return &YggdrasilSummary{
+		PublicKey:   hex.EncodeToString(pk),
+		IPv6Address: addr.String(),
+		IPv6Subnet:  ipnet.String(),
+	}
 }
