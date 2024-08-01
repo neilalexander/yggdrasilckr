@@ -20,6 +20,7 @@ import (
 	"github.com/kardianos/minwinsvc"
 	"github.com/neilalexander/yggdrasilckr/src/ckriprwc"
 	"github.com/neilalexander/yggdrasilckr/src/config"
+	"github.com/neilalexander/yggdrasilckr/src/routes"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
 	"github.com/yggdrasil-network/yggdrasil-go/src/admin"
@@ -269,6 +270,21 @@ func main() {
 		}
 		if n.admin != nil && n.tun != nil {
 			n.tun.SetupAdminHandlers(n.admin)
+		}
+		if n.tun != nil {
+			cidrs := make([]string, 0)
+			for _, nets := range cfg.RemoteSubnets {
+				cidrs = append(cidrs, nets...)
+			}
+			for _, cidr := range cfg.IPv4RemoteSubnets {
+				cidrs = append(cidrs, cidr)
+			}
+			for _, cidr := range cfg.IPv6RemoteSubnets {
+				cidrs = append(cidrs, cidr)
+			}
+			if err := routes.SetRoutes(n.tun, logger, cidrs); err != nil {
+				panic(err)
+			}
 		}
 	}
 
