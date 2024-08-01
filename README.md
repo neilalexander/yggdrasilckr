@@ -1,6 +1,8 @@
 # yggdrasilckr
 
-This is a special Yggdrasil build that re-adds tunnel routing/crypto-key routing (CKR) support. Add a section to your `yggdrasil.conf` like this:
+This is a special Yggdrasil build that re-adds tunnel routing/crypto-key routing (CKR) support. This allows you to build one or more point-to-point VPNs over the Yggdrasil Network and route normal IPv4 or IPv6 traffic to other `yggdrasilckr` nodes, without having to use higher-level VPN tools.
+
+To configure, add a section to your `yggdrasil.conf` like this:
 
 ```
   TunnelRouting: {
@@ -14,9 +16,9 @@ This is a special Yggdrasil build that re-adds tunnel routing/crypto-key routing
   }
 ```
 
-... and then add the same routes to your operating system routing table to point to the Yggdrasil TUN adapter.
+If you are using an operating system other than Linux, you will need to add routing table entries for these routes to the TUN adapter manually.
 
-Then use Go 1.20 to build and run:
+Then use Go 1.21 to build and run:
 
 ```
 go build -o yggdrasilckr ./cmd/yggdrasilckr
