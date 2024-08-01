@@ -90,6 +90,9 @@ func main() {
 
 	cfg := &config.NodeConfig{
 		NodeConfig: yggcfg.GenerateConfig(),
+		TunnelRoutingConfig: config.TunnelRoutingConfig{
+			InstallRoutes: true,
+		},
 	}
 	var err error
 	switch {
@@ -271,7 +274,7 @@ func main() {
 		if n.admin != nil && n.tun != nil {
 			n.tun.SetupAdminHandlers(n.admin)
 		}
-		if n.tun != nil {
+		if n.tun != nil && cfg.InstallRoutes {
 			cidrs := make([]string, 0)
 			for _, nets := range cfg.RemoteSubnets {
 				cidrs = append(cidrs, nets...)
