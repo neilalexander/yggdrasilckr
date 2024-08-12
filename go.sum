@@ -52,8 +52,8 @@ github.com/vishvananda/netlink v1.1.0/go.mod h1:cTgwzPIzzgDAYoQrMm0EdrjRUBkTqKYp
 github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df/go.mod h1:JP3t17pCcGlemwknint6hfoeCVQrEMVwxRLRjXpq+BU=
 github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f h1:p4VB7kIXpOQvVn1ZaTIVp+3vuYAXFe3OJEvjbUYJLaA=
 github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f/go.mod h1:DD4vA1DwXk04H54A1oHXtwZmA0grkVMdPxx/VGLCah0=
-github.com/yggdrasil-network/yggdrasil-go v0.5.7 h1:dYGchGR4qKfVCrCta4DMINo//UxjvfV0JeLX+3zj570=
-github.com/yggdrasil-network/yggdrasil-go v0.5.7/go.mod h1:rqiISfR3QgICItCBj2cTeNJo7I6Zpt7dHpsdBRTUBUQ=
+github.com/yggdrasil-network/yggdrasil-go v0.5.8 h1:8vpSVcsu4+zFtDl80j38tSu1ExZEEBrGS2CBVf5tB1Y=
+github.com/yggdrasil-network/yggdrasil-go v0.5.8/go.mod h1:rqiISfR3QgICItCBj2cTeNJo7I6Zpt7dHpsdBRTUBUQ=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 go.uber.org/mock v0.4.0 h1:VcM4ZOtdbR4f6VXfiOpwpVJDL6lCReaZ6mw31wqh7KU=
 go.uber.org/mock v0.4.0/go.mod h1:a6FSlNadKUHUa9IP5Vyt1zh4fC7uAwxMutEAscFbkZc=

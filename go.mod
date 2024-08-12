@@ -11,7 +11,7 @@ require (
 	github.com/hjson/hjson-go/v4 v4.4.0
 	github.com/kardianos/minwinsvc v1.0.2
 	github.com/vishvananda/netlink v1.1.0
-	github.com/yggdrasil-network/yggdrasil-go v0.5.7
+	github.com/yggdrasil-network/yggdrasil-go v0.5.8
 	golang.org/x/mobile v0.0.0-20240716161057-1ad2df20a8b6
 	golang.org/x/net v0.27.0
 	golang.org/x/text v0.16.0
