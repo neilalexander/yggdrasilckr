@@ -292,14 +292,11 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 			// check if it's a CKR source instead
 			if addr, ok := netip.AddrFromSlice(srcAddr[:addrlen]); ok {
 				key, err := k.ckr.getPublicKeyForAddress(addr)
-				if err != nil {
-					return 0, nil // err
-				}
-				if !key.Equal(srcKey) {
-					return 0, nil // fmt.Errorf("unknown source address")
+				if err != nil || !key.Equal(srcKey) {
+					continue
 				}
 			} else {
-				return 0, nil // fmt.Errorf("invalid source address")
+				continue
 			}
 		}
 		return copy(p, bs), nil
