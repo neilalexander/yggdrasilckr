@@ -1,6 +1,7 @@
 package mobile
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/hex"
 	"encoding/json"
@@ -54,7 +55,7 @@ func (m *Yggdrasil) StartJSON(configjson []byte) error {
 	m.config = &config.NodeConfig{
 		NodeConfig: yggcfg.GenerateConfig(),
 	}
-	if err := m.config.UnmarshalHJSON(configjson); err != nil {
+	if _, err := m.config.ReadFrom(bytes.NewBuffer(configjson)); err != nil {
 		return err
 	}
 	// Setup the Yggdrasil node itself.

@@ -42,20 +42,20 @@ func (c *cryptokey) configure(config *config.TunnelRoutingConfig) error {
 
 	for ipv6, pubkey := range c.config.IPv6RemoteSubnets {
 		if err := c._addRemoteSubnet(ipv6, pubkey); err != nil {
-			return fmt.Errorf("Error adding routed IPv6 subnet: %w", err)
+			c.log.Warnf("Error adding routed IPv6 subnet %q: %s", ipv6, err)
 		}
 	}
 
 	for ipv4, pubkey := range c.config.IPv4RemoteSubnets {
 		if err := c._addRemoteSubnet(ipv4, pubkey); err != nil {
-			return fmt.Errorf("Error adding routed IPv4 subnet: %w", err)
+			c.log.Warnf("Error adding routed IPv4 subnet %q: %s", ipv4, err)
 		}
 	}
 
 	for pubkey, ips := range c.config.RemoteSubnets {
 		for _, ip := range ips {
 			if err := c._addRemoteSubnet(ip, pubkey); err != nil {
-				return fmt.Errorf("Error adding routed subnet: %w", err)
+				c.log.Warnf("Error adding routed subnet %q: %s", ip, err)
 			}
 		}
 	}
@@ -69,6 +69,8 @@ func (c *cryptokey) configure(config *config.TunnelRoutingConfig) error {
 		for _, r := range c.v6Routes {
 			c.log.Println(" -", r.prefix, "via", hex.EncodeToString(r.destination))
 		}
+	} else {
+		c.log.Println("No active IPv6 routes")
 	}
 
 	if len(c.v4Routes) > 0 {
@@ -80,6 +82,8 @@ func (c *cryptokey) configure(config *config.TunnelRoutingConfig) error {
 		for _, r := range c.v4Routes {
 			c.log.Println(" -", r.prefix, "via", hex.EncodeToString(r.destination))
 		}
+	} else {
+		c.log.Println("No active IPv4 routes")
 	}
 
 	return nil
