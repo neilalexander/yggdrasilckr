@@ -164,23 +164,20 @@ func (c *cryptokey) getPublicKeyForAddress(addr netip.Addr) (ed25519.PublicKey, 
 	c.RLock()
 	defer c.RUnlock()
 
+	var routes []*route
 	switch {
 	case is6:
-		for _, route := range c.v6Routes {
-			if route.prefix.Contains(addr) {
-				return route.destination, nil
-			}
-		}
-
+		routes = c.v6Routes
 	case is4:
-		for _, route := range c.v4Routes {
-			if route.prefix.Contains(addr) {
-				return route.destination, nil
-			}
-		}
-
+		routes = c.v4Routes
 	default:
 		return nil, fmt.Errorf("unexpected prefix size")
+	}
+
+	for _, route := range routes {
+		if route.prefix.Contains(addr) {
+			return route.destination, nil
+		}
 	}
 
 	return nil, fmt.Errorf("no route to %s", addr.String())

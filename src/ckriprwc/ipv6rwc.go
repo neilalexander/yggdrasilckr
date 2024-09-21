@@ -2,33 +2,21 @@ package ckriprwc
 
 import (
 	"crypto/ed25519"
-	"errors"
-	"fmt"
 	"net/netip"
 	"sync"
 	"time"
 
-	"golang.org/x/net/icmp"
-	"golang.org/x/net/ipv6"
-
 	iwt "github.com/Arceliar/ironwood/types"
 	"github.com/gologme/log"
 	"github.com/neilalexander/yggdrasilckr/src/config"
+	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv6"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
 	"github.com/yggdrasil-network/yggdrasil-go/src/core"
 )
 
 const keyStoreTimeout = 2 * time.Minute
-
-/*
-// Out-of-band packet types
-const (
-	typeKeyDummy = iota // nolint:deadcode,varcheck
-	typeKeyLookup
-	typeKeyResponse
-)
-*/
 
 type keyArray [ed25519.PublicKeySize]byte
 
@@ -62,10 +50,6 @@ func (k *keyStore) init(c *core.Core) {
 	k.core = c
 	k.address = *address.AddrForKey(k.core.PublicKey())
 	k.subnet = *address.SubnetForKey(k.core.PublicKey())
-	/*if err := k.core.SetOutOfBandHandler(k.oobHandler); err != nil {
-		err = fmt.Errorf("tun.core.SetOutOfBandHander: %w", err)
-		panic(err)
-	}*/
 	k.core.SetPathNotify(func(key ed25519.PublicKey) {
 		k.update(key)
 	})
@@ -185,48 +169,9 @@ func (k *keyStore) resetTimeout(info *keyInfo) {
 	})
 }
 
-/*
-func (k *keyStore) oobHandler(fromKey, toKey ed25519.PublicKey, data []byte) { // nolint:unused
-	if len(data) != 1+ed25519.SignatureSize {
-		return
-	}
-	sig := data[1:]
-	switch data[0] {
-	case typeKeyLookup:
-		snet := *address.SubnetForKey(toKey)
-		if snet == k.subnet && ed25519.Verify(fromKey, toKey[:], sig) {
-			// This is looking for at least our subnet (possibly our address)
-			// Send a response
-			k.sendKeyResponse(fromKey)
-		}
-	case typeKeyResponse:
-		// TODO keep a list of something to match against...
-		// Ignore the response if it doesn't match anything of interest...
-		if ed25519.Verify(fromKey, toKey[:], sig) {
-			k.update(fromKey)
-		}
-	}
-}
-*/
-
 func (k *keyStore) sendKeyLookup(partial ed25519.PublicKey) {
-	/*
-		sig := ed25519.Sign(k.core.PrivateKey(), partial[:])
-		bs := append([]byte{typeKeyLookup}, sig...)
-		//_ = k.core.SendOutOfBand(partial, bs)
-		_ = bs
-	*/
 	k.core.SendLookup(partial)
 }
-
-/*
-func (k *keyStore) sendKeyResponse(dest ed25519.PublicKey) { // nolint:unused
-	sig := ed25519.Sign(k.core.PrivateKey(), dest[:])
-	bs := append([]byte{typeKeyResponse}, sig...)
-	//_ = k.core.SendOutOfBand(dest, bs)
-	_ = bs
-}
-*/
 
 func (k *keyStore) readPC(p []byte) (int, error) {
 	buf := make([]byte, k.core.MTU(), 65535)
@@ -254,6 +199,9 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 		k.mutex.Lock()
 		mtu := int(k.mtu)
 		k.mutex.Unlock()
+		if len(bs) > mtu {
+			continue
+		}
 		if ip6 && len(bs) > mtu {
 			// Using bs would make it leak off the stack, so copy to buf
 			buf := make([]byte, 512)
@@ -284,8 +232,6 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 		srcKey := ed25519.PublicKey(from.(iwt.Addr))
 		info := k.update(srcKey)
 		switch {
-		case ip6 && dstAddr != k.address && dstSubnet != k.subnet:
-			return 0, nil
 		case ip4:
 			fallthrough
 		case ip6 && srcAddr != info.address && srcSubnet != info.subnet:
@@ -304,14 +250,16 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 }
 
 func (k *keyStore) writePC(bs []byte) (int, error) {
+	if len(bs) == 0 {
+		return 0, nil
+	}
 	ip4 := bs[0]&0xf0 == 0x40
 	ip6 := bs[0]&0xf0 == 0x60
 	if !ip4 && !ip6 {
-		return 0, errors.New("not an IP packet")
+		return len(bs), nil
 	}
 	if ip6 && len(bs) < 40 {
-		strErr := fmt.Sprint("undersized IPv6 packet, length: ", len(bs))
-		return 0, errors.New(strErr)
+		return len(bs), nil
 	}
 	var dstAddr address.Address
 	var dstSubnet address.Subnet
@@ -334,11 +282,11 @@ func (k *keyStore) writePC(bs []byte) (int, error) {
 		if addr, ok := netip.AddrFromSlice(dstAddr[:addrlen]); ok {
 			key, err := k.ckr.getPublicKeyForAddress(addr)
 			if err != nil {
-				return 0, nil // err
+				return len(bs), nil
 			}
 			return k.core.WriteTo(bs, iwt.Addr(key[:]))
 		} else {
-			return 0, nil
+			return len(bs), nil
 		}
 	}
 	return len(bs), nil
