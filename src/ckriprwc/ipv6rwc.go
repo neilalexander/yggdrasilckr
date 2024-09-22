@@ -232,10 +232,15 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 		srcKey := ed25519.PublicKey(from.(iwt.Addr))
 		info := k.update(srcKey)
 		switch {
-		case ip4:
-			fallthrough
-		case ip6 && srcAddr != info.address && srcSubnet != info.subnet:
-			// check if it's a CKR source instead
+		case ip6 && (srcAddr == info.address || srcSubnet == info.subnet):
+			// Handling traffic from Yggdrasil sources.
+			if k.ckr.config.YggdrasilRouting {
+				return copy(p, bs), nil
+			}
+			continue
+		case ip4, ip6:
+			// Handling traffic from non-Yggdrasil sources, check for
+			// CKR routes that match the source address instead.
 			if addr, ok := netip.AddrFromSlice(srcAddr[:addrlen]); ok {
 				key, err := k.ckr.getPublicKeyForAddress(addr)
 				if err != nil || !key.Equal(srcKey) {
@@ -274,9 +279,9 @@ func (k *keyStore) writePC(bs []byte) (int, error) {
 		addrlen = 16
 	}
 	switch {
-	case dstAddr.IsValid():
+	case k.ckr.config.YggdrasilRouting && dstAddr.IsValid():
 		k.sendToAddress(dstAddr, bs)
-	case dstSubnet.IsValid():
+	case k.ckr.config.YggdrasilRouting && dstSubnet.IsValid():
 		k.sendToSubnet(dstSubnet, bs)
 	default:
 		if addr, ok := netip.AddrFromSlice(dstAddr[:addrlen]); ok {

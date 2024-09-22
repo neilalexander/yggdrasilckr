@@ -19,6 +19,7 @@ type NodeConfig struct {
 type TunnelRoutingConfig struct {
 	Enable            bool                `comment:"Enable or disable tunnel routing."`
 	InstallRoutes     bool                `comment:"Install system routing table entries automatically (Linux only)."`
+	YggdrasilRouting  bool                `comment:"Enable or disable routing of Yggdrasil IPv6 addresses/subnets."`
 	RemoteSubnets     map[string][]string `comment:"IPv4 or IPv6 subnets belonging to remote nodes by public key, e.g.\n{ \"boxpubkey\": [ \"a.b.c.d/e\", \"aaaa:bbbb:cccc::/e\" ] }"`
 	IPv6RemoteSubnets map[string]string   `json:"-" comment:"IPv6 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"aaaa:bbbb:cccc::/e\": \"boxpubkey\", ... }"`
 	IPv4RemoteSubnets map[string]string   `json:"-" comment:"IPv4 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"a.b.c.d/e\": \"boxpubkey\", ... }"`
@@ -50,6 +51,7 @@ func (cfg *NodeConfig) ReadFrom(r io.Reader) (int64, error) {
 	var tunnelCfg struct {
 		TunnelRoutingConfig `json:"TunnelRouting"`
 	}
+	tunnelCfg.TunnelRoutingConfig.YggdrasilRouting = true
 	tunnelCfg.TunnelRoutingConfig.InstallRoutes = true
 	if err := hjson.Unmarshal(conf, &tunnelCfg); err != nil {
 		return n, err
