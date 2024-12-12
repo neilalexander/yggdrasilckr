@@ -5,16 +5,16 @@ go 1.22.0
 toolchain go1.23.0
 
 require (
-	github.com/Arceliar/ironwood v0.0.0-20241122002527-75a6e82fa380
+	github.com/Arceliar/ironwood v0.0.0-20241210120540-9deb08d9f8f9
 	github.com/gologme/log v1.3.0
 	github.com/hashicorp/go-syslog v1.0.0
 	github.com/hjson/hjson-go/v4 v4.4.0
 	github.com/kardianos/minwinsvc v1.0.2
 	github.com/vishvananda/netlink v1.3.0
-	github.com/yggdrasil-network/yggdrasil-go v0.5.10
+	github.com/yggdrasil-network/yggdrasil-go v0.5.11
 	golang.org/x/mobile v0.0.0-20241016134751-7ff83004ec2c
-	golang.org/x/net v0.31.0
-	golang.org/x/text v0.20.0
+	golang.org/x/net v0.32.0
+	golang.org/x/text v0.21.0
 )
 
 require (
@@ -26,14 +26,14 @@ require (
 	github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 // indirect
 	github.com/onsi/ginkgo/v2 v2.9.5 // indirect
 	github.com/quic-go/quic-go v0.46.0 // indirect
-	github.com/vishvananda/netns v0.0.4 // indirect
+	github.com/vishvananda/netns v0.0.5 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	go.uber.org/mock v0.4.0 // indirect
-	golang.org/x/crypto v0.29.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/sync v0.9.0 // indirect
-	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/tools v0.26.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173 // indirect
