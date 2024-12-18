@@ -5,13 +5,13 @@ go 1.22.0
 toolchain go1.23.0
 
 require (
-	github.com/Arceliar/ironwood v0.0.0-20241210120540-9deb08d9f8f9
+	github.com/Arceliar/ironwood v0.0.0-20241213013129-743fe2fccbd3
 	github.com/gologme/log v1.3.0
 	github.com/hashicorp/go-syslog v1.0.0
 	github.com/hjson/hjson-go/v4 v4.4.0
 	github.com/kardianos/minwinsvc v1.0.2
 	github.com/vishvananda/netlink v1.3.0
-	github.com/yggdrasil-network/yggdrasil-go v0.5.11
+	github.com/yggdrasil-network/yggdrasil-go v0.5.12
 	golang.org/x/mobile v0.0.0-20241016134751-7ff83004ec2c
 	golang.org/x/net v0.32.0
 	golang.org/x/text v0.21.0
@@ -25,7 +25,7 @@ require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 // indirect
 	github.com/onsi/ginkgo/v2 v2.9.5 // indirect
-	github.com/quic-go/quic-go v0.46.0 // indirect
+	github.com/quic-go/quic-go v0.48.2 // indirect
 	github.com/vishvananda/netns v0.0.5 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	go.uber.org/mock v0.4.0 // indirect
