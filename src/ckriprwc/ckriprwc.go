@@ -426,10 +426,22 @@ func NewReadWriteCloser(c *core.Core, log *log.Logger, config *config.TunnelRout
 }
 
 func (rwc *ReadWriteCloser) Address() address.Address {
+	if !rwc.ckr.config.YggdrasilRouting {
+		// If YggdrasilRouting is disabled then we don't need to populate the IPv6
+		// address on the TUN interface, returning a bad address here stops the TUN
+		// package from doing that.
+		return [16]byte{}
+	}
 	return rwc.address
 }
 
 func (rwc *ReadWriteCloser) Subnet() address.Subnet {
+	if !rwc.ckr.config.YggdrasilRouting {
+		// If YggdrasilRouting is disabled then we don't need to populate the IPv6
+		// address on the TUN interface, returning a bad address here stops the TUN
+		// package from doing that.
+		return [8]byte{}
+	}
 	return rwc.subnet
 }
 
