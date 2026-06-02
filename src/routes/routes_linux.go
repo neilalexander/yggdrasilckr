@@ -11,6 +11,23 @@ import (
 	"github.com/yggdrasil-network/yggdrasil-go/src/tun"
 )
 
+func SetAddresses(tun *tun.TunAdapter, log *log.Logger, addresses []string) error {
+	nlintf, err := netlink.LinkByName(tun.Name())
+	if err != nil {
+		return fmt.Errorf("failed to find link by name: %w", err)
+	}
+	for _, addr := range addresses {
+		nladdr, err := netlink.ParseAddr(addr)
+		if err != nil {
+			return fmt.Errorf("couldn't parse CIDR %q: %w", addr, err)
+		}
+		if err := netlink.AddrAdd(nlintf, nladdr); err != nil {
+			log.Warnln("Failed to add address", addr, "to interface:", err)
+		}
+	}
+	return nil
+}
+
 func SetRoutes(tun *tun.TunAdapter, log *log.Logger, cidrs []string) error {
 	nlintf, err := netlink.LinkByName(tun.Name())
 	if err != nil {

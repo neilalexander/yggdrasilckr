@@ -1,4 +1,4 @@
-//go:build !linux
+//go:build !linux && !darwin
 
 package routes
 
@@ -9,5 +9,9 @@ import (
 )
 
 func SetRoutes(tun *tun.TunAdapter, log *log.Logger, cidrs []string) error {
+	return nil
+}
+
+func SetAddresses(tun *tun.TunAdapter, log *log.Logger, addresses []string) error {
 	return nil
 }

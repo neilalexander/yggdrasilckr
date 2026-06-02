@@ -275,6 +275,11 @@ func main() {
 			n.tun.SetupAdminHandlers(n.admin)
 		}
 		if n.tun != nil && cfg.InstallRoutes {
+			if len(cfg.Addresses) > 0 {
+				if err := routes.SetAddresses(n.tun, logger, cfg.Addresses); err != nil {
+					panic(err)
+				}
+			}
 			cidrs := make([]string, 0)
 			for _, nets := range cfg.RemoteSubnets {
 				cidrs = append(cidrs, nets...)

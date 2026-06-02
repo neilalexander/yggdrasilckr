@@ -18,8 +18,9 @@ type NodeConfig struct {
 // IPv4 or IPv6 subnets across the Yggdrasil network.
 type TunnelRoutingConfig struct {
 	Enable            bool                `comment:"Enable or disable tunnel routing."`
-	InstallRoutes     bool                `comment:"Install system routing table entries automatically (Linux only)."`
+	InstallRoutes     bool                `comment:"Install system routing table entries automatically (Linux and\nmacOS only)."`
 	YggdrasilRouting  bool                `comment:"Enable or disable routing of Yggdrasil IPv6 addresses/subnets."`
+	Addresses         []string            `comment:"Interface addresses to configure before installing routes, e.g.\n[ \"a.b.c.1/24\", \"aaaa:bbbb:cccc::1/e\" ] (Linux and macOS only)."`
 	RemoteSubnets     map[string][]string `comment:"IPv4 or IPv6 subnets belonging to remote nodes by public key, e.g.\n{ \"boxpubkey\": [ \"a.b.c.d/e\", \"aaaa:bbbb:cccc::/e\" ] }"`
 	IPv6RemoteSubnets map[string]string   `json:"-" comment:"IPv6 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"aaaa:bbbb:cccc::/e\": \"boxpubkey\", ... }"`
 	IPv4RemoteSubnets map[string]string   `json:"-" comment:"IPv4 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"a.b.c.d/e\": \"boxpubkey\", ... }"`
