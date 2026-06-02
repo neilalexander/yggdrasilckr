@@ -18,7 +18,7 @@ To configure, add a section to your `yggdrasil.conf` like this:
 
 If you are using an operating system other than Linux, you will need to add routing table entries for these routes to the TUN adapter manually.
 
-Then use Go 1.21 to build and run:
+Then use Go 1.25 to build and run:
 
 ```
 go build -o yggdrasilckr ./cmd/yggdrasilckr
