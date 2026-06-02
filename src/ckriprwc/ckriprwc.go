@@ -229,44 +229,22 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 			if k.ckr.config.YggdrasilRouting {
 				return copy(p, bs), nil
 			}
+			if packet, ok := buildSourcePolicyResponse(bs, ip4, srcAddr, dstAddr); ok {
+				_, _ = k.core.WriteTo(packet, iwt.Addr(srcKey))
+			}
 			continue
 		case ip4, ip6:
 			// Handling traffic from non-Yggdrasil sources, check for
 			// CKR routes that match the source address instead.
 			if addr, ok := netip.AddrFromSlice(srcAddr[:addrlen]); ok {
-				key, err := k.ckr.getPublicKeyForAddress(addr)
-				if err != nil || !key.Equal(srcKey) {
-					var src, dst net.IP
-					code := icmpv6CodeCommunicationAdminProhibited
-					switch {
-					case ip6:
-						src = net.IP(dstAddr[:])
-						dst = net.IP(srcAddr[:])
-						code = icmpv6CodeCommunicationAdminProhibited
-					case ip4:
-						src = net.IP(dstAddr[:4])
-						dst = net.IP(srcAddr[:4])
-						code = icmpv4CodeCommunicationAdminProhibited
-					}
-					if packet, ok := buildDestinationUnreachableResponse(bs, src, dst, code); ok {
+				if key, err := k.ckr.getPublicKeyForAddress(addr); err != nil || !key.Equal(srcKey) {
+					if packet, ok := buildSourcePolicyResponse(bs, ip4, srcAddr, dstAddr); ok {
 						_, _ = k.writePC(packet)
 					}
 					continue
 				}
 			} else {
-				var src, dst net.IP
-				code := icmpv6CodeCommunicationAdminProhibited
-				switch {
-				case ip6:
-					src = net.IP(dstAddr[:])
-					dst = net.IP(srcAddr[:])
-					code = icmpv6CodeCommunicationAdminProhibited
-				case ip4:
-					src = net.IP(dstAddr[:4])
-					dst = net.IP(srcAddr[:4])
-					code = icmpv4CodeCommunicationAdminProhibited
-				}
-				if packet, ok := buildDestinationUnreachableResponse(bs, src, dst, code); ok {
+				if packet, ok := buildSourcePolicyResponse(bs, ip4, srcAddr, dstAddr); ok {
 					_, _ = k.writePC(packet)
 				}
 				continue
@@ -353,6 +331,21 @@ func buildDestinationUnreachableResponse(bs []byte, src, dst net.IP, code int) (
 	}
 
 	return nil, false
+}
+
+func buildSourcePolicyResponse(bs []byte, ip4 bool, srcAddr, dstAddr address.Address) ([]byte, bool) {
+	var src, dst net.IP
+	code := icmpv6CodeCommunicationAdminProhibited
+	switch {
+	case ip4:
+		src = net.IP(dstAddr[:4])
+		dst = net.IP(srcAddr[:4])
+		code = icmpv4CodeCommunicationAdminProhibited
+	default:
+		src = net.IP(dstAddr[:])
+		dst = net.IP(srcAddr[:])
+	}
+	return buildDestinationUnreachableResponse(bs, src, dst, code)
 }
 
 func (k *keyStore) writePC(bs []byte) (int, error) {
