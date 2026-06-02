@@ -177,26 +177,28 @@ func (k *keyStore) sendKeyLookup(partial ed25519.PublicKey) {
 }
 
 func (k *keyStore) readPC(p []byte) (int, error) {
-	buf := make([]byte, k.core.MTU(), 65535)
+	var _buf [65535]byte
+	buf := _buf[:k.core.MTU()]
 	for {
-		bs := buf
-		n, from, err := k.core.ReadFrom(bs)
+		n, from, err := k.core.ReadFrom(buf)
 		if err != nil {
 			return n, err
 		}
 		if n == 0 {
 			continue
 		}
-		bs = bs[:n]
+		bs := buf[:n]
 		if len(bs) == 0 {
 			continue
 		}
 		ip4 := bs[0]&0xf0 == 0x40
 		ip6 := bs[0]&0xf0 == 0x60
-		if !ip4 && !ip6 {
-			continue // not IPv6
-		}
-		if ip6 && len(bs) < 40 {
+		switch {
+		case !ip4 && !ip6:
+			continue
+		case ip6 && len(bs) < 40:
+			continue
+		case ip4 && len(bs) < 20:
 			continue
 		}
 		if mtu := int(k.mtu.Load()); len(bs) > mtu {
