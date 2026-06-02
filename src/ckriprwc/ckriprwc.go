@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/netip"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	iwt "github.com/Arceliar/ironwood/types"
@@ -33,7 +34,7 @@ type keyStore struct {
 	addrBuffer   map[address.Address]*buffer
 	subnetToInfo map[address.Subnet]*keyInfo
 	subnetBuffer map[address.Subnet]*buffer
-	mtu          uint64
+	mtu          atomic.Uint64
 }
 
 type keyInfo struct {
@@ -60,7 +61,7 @@ func (k *keyStore) init(c *core.Core) {
 	k.addrBuffer = make(map[address.Address]*buffer)
 	k.subnetToInfo = make(map[address.Subnet]*keyInfo)
 	k.subnetBuffer = make(map[address.Subnet]*buffer)
-	k.mtu = 1280 // Default to something safe, expect user to set this
+	k.mtu.Store(1280) // Default to something safe, expect user to set this
 }
 
 func (k *keyStore) sendToAddress(addr address.Address, bs []byte) {
@@ -198,10 +199,7 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 		if ip6 && len(bs) < 40 {
 			continue
 		}
-		k.mutex.Lock()
-		mtu := int(k.mtu)
-		k.mutex.Unlock()
-		if len(bs) > mtu {
+		if mtu := int(k.mtu.Load()); len(bs) > mtu {
 			if packet, ok := buildOversizeResponse(bs, mtu); ok {
 				_, _ = k.writePC(packet)
 			}
@@ -411,16 +409,11 @@ func (k *keyStore) SetMTU(mtu uint64) {
 	if mtu < 1280 {
 		mtu = 1280
 	}
-	k.mutex.Lock()
-	k.mtu = mtu
-	k.mutex.Unlock()
+	k.mtu.Store(mtu)
 }
 
 func (k *keyStore) MTU() uint64 {
-	k.mutex.Lock()
-	mtu := k.mtu
-	k.mutex.Unlock()
-	return mtu
+	return k.mtu.Load()
 }
 
 type ReadWriteCloser struct {
