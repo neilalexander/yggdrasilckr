@@ -17,6 +17,11 @@ import (
 	"golang.org/x/net/ipv6"
 )
 
+const (
+	icmpv6CodeNoRouteToDestination         = 0
+	icmpv6CodeCommunicationAdminProhibited = 1
+)
+
 // Marshal returns the binary encoding of h.
 func ipv6Header_Marshal(h *ipv6.Header) ([]byte, error) {
 	b := make([]byte, 40)

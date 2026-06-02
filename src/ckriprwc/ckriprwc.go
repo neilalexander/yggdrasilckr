@@ -2,6 +2,7 @@ package ckriprwc
 
 import (
 	"crypto/ed25519"
+	"net"
 	"net/netip"
 	"sync"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/gologme/log"
 	"github.com/neilalexander/yggdrasilckr/src/config"
 	"golang.org/x/net/icmp"
+	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
@@ -200,17 +202,7 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 		mtu := int(k.mtu)
 		k.mutex.Unlock()
 		if len(bs) > mtu {
-			continue
-		}
-		if ip6 && len(bs) > mtu {
-			// Using bs would make it leak off the stack, so copy to buf
-			buf := make([]byte, 512)
-			cn := copy(buf, bs)
-			ptb := &icmp.PacketTooBig{
-				MTU:  mtu,
-				Data: buf[:cn],
-			}
-			if packet, err := CreateICMPv6(buf[8:24], buf[24:40], ipv6.ICMPTypePacketTooBig, 0, ptb); err == nil {
+			if packet, ok := buildOversizeResponse(bs, mtu); ok {
 				_, _ = k.writePC(packet)
 			}
 			continue
@@ -244,14 +236,123 @@ func (k *keyStore) readPC(p []byte) (int, error) {
 			if addr, ok := netip.AddrFromSlice(srcAddr[:addrlen]); ok {
 				key, err := k.ckr.getPublicKeyForAddress(addr)
 				if err != nil || !key.Equal(srcKey) {
+					var src, dst net.IP
+					code := icmpv6CodeCommunicationAdminProhibited
+					switch {
+					case ip6:
+						src = net.IP(dstAddr[:])
+						dst = net.IP(srcAddr[:])
+						code = icmpv6CodeCommunicationAdminProhibited
+					case ip4:
+						src = net.IP(dstAddr[:4])
+						dst = net.IP(srcAddr[:4])
+						code = icmpv4CodeCommunicationAdminProhibited
+					}
+					if packet, ok := buildDestinationUnreachableResponse(bs, src, dst, code); ok {
+						_, _ = k.writePC(packet)
+					}
 					continue
 				}
 			} else {
+				var src, dst net.IP
+				code := icmpv6CodeCommunicationAdminProhibited
+				switch {
+				case ip6:
+					src = net.IP(dstAddr[:])
+					dst = net.IP(srcAddr[:])
+					code = icmpv6CodeCommunicationAdminProhibited
+				case ip4:
+					src = net.IP(dstAddr[:4])
+					dst = net.IP(srcAddr[:4])
+					code = icmpv4CodeCommunicationAdminProhibited
+				}
+				if packet, ok := buildDestinationUnreachableResponse(bs, src, dst, code); ok {
+					_, _ = k.writePC(packet)
+				}
 				continue
 			}
 		}
 		return copy(p, bs), nil
 	}
+}
+
+func buildOversizeResponse(bs []byte, mtu int) ([]byte, bool) {
+	if len(bs) == 0 {
+		return nil, false
+	}
+
+	switch bs[0] & 0xf0 {
+	case 0x60:
+		if len(bs) < 40 {
+			return nil, false
+		}
+		packet, err := CreateICMPv6(
+			net.IP(bs[8:24]),
+			net.IP(bs[24:40]),
+			ipv6.ICMPTypePacketTooBig,
+			0,
+			&icmp.PacketTooBig{
+				MTU:  mtu,
+				Data: bs,
+			},
+		)
+		return packet, err == nil
+
+	case 0x40:
+		if len(bs) < 20 || bs[6]&0x40 == 0 {
+			return nil, false
+		}
+		body := make([]byte, 4+len(bs))
+		copy(body[4:], bs)
+		body[2] = byte(mtu >> 8)
+		body[3] = byte(mtu)
+		packet, err := CreateICMPv4(
+			net.IP(bs[12:16]),
+			net.IP(bs[16:20]),
+			ipv4.ICMPTypeDestinationUnreachable,
+			icmpv4CodeFragmentationNeededAndDFSet,
+			&icmp.RawBody{Data: body},
+		)
+		return packet, err == nil
+	}
+
+	return nil, false
+}
+
+func buildDestinationUnreachableResponse(bs []byte, src, dst net.IP, code int) ([]byte, bool) {
+	if len(bs) == 0 {
+		return nil, false
+	}
+
+	switch bs[0] & 0xf0 {
+	case 0x60:
+		if len(bs) < 40 {
+			return nil, false
+		}
+		packet, err := CreateICMPv6(
+			dst,
+			src,
+			ipv6.ICMPTypeDestinationUnreachable,
+			code,
+			&icmp.DstUnreach{Data: bs},
+		)
+		return packet, err == nil
+
+	case 0x40:
+		if len(bs) < 20 {
+			return nil, false
+		}
+		packet, err := CreateICMPv4(
+			dst,
+			src,
+			ipv4.ICMPTypeDestinationUnreachable,
+			code,
+			&icmp.DstUnreach{Data: bs},
+		)
+		return packet, err == nil
+	}
+
+	return nil, false
 }
 
 func (k *keyStore) writePC(bs []byte) (int, error) {
