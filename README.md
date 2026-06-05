@@ -6,13 +6,21 @@ To configure, add a section to your `yggdrasil.conf` like this:
 
 ```
   TunnelRouting: {
-    Enable: true
-    RemoteSubnets: {
-      "remotepublickey": [
-        "a.a.a.a/a",
-        "b::b/b"
-      ]
-    }
+      # Install system routing table entries automatically (Linux and
+      # macOS only).
+      InstallRoutes: true
+  
+      # Enable or disable routing of Yggdrasil IPv6 addresses/subnets.
+      YggdrasilRouting: true
+  
+      # Interface addresses to configure before installing routes, e.g.
+      # [ "a.b.c.1/24", "aaaa:bbbb:cccc::1/e" ] (Linux and macOS only).
+      Addresses: []
+  
+      # IPv4 or IPv6 subnets belonging to remote nodes by public key, e.g.
+      # { "boxpubkey": [ "a.b.c.d/e", "aaaa:bbbb:cccc::/e" ] }
+      RemoteSubnets: {}
+    })
   }
 ```
 

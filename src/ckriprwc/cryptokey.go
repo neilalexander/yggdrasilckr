@@ -33,7 +33,7 @@ func (c *cryptokey) configure(config *config.TunnelRoutingConfig) error {
 	c.Lock()
 	defer c.Unlock()
 
-	if c.config = config; !c.config.Enable {
+	if c.config = config; c.config == nil {
 		return nil
 	}
 

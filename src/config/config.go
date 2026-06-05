@@ -17,7 +17,6 @@ type NodeConfig struct {
 // TunnelRoutingConfig contains the crypto-key routing tables for tunneling regular
 // IPv4 or IPv6 subnets across the Yggdrasil network.
 type TunnelRoutingConfig struct {
-	Enable            bool                `comment:"Enable or disable tunnel routing."`
 	InstallRoutes     bool                `comment:"Install system routing table entries automatically (Linux and\nmacOS only)."`
 	YggdrasilRouting  bool                `comment:"Enable or disable routing of Yggdrasil IPv6 addresses/subnets."`
 	Addresses         []string            `comment:"Interface addresses to configure before installing routes, e.g.\n[ \"a.b.c.1/24\", \"aaaa:bbbb:cccc::1/e\" ] (Linux and macOS only)."`

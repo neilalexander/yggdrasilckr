@@ -91,7 +91,8 @@ func main() {
 	cfg := &config.NodeConfig{
 		NodeConfig: yggcfg.GenerateConfig(),
 		TunnelRoutingConfig: config.TunnelRoutingConfig{
-			InstallRoutes: true,
+			YggdrasilRouting: true,
+			InstallRoutes:    true,
 		},
 	}
 	var err error
@@ -206,6 +207,9 @@ func main() {
 		}
 		for _, peer := range cfg.Peers {
 			options = append(options, core.Peer{URI: peer})
+		}
+		if cfg.GroupPassword != "" {
+			options = append(options, core.GroupPassword(cfg.GroupPassword))
 		}
 		for intf, peers := range cfg.InterfacePeers {
 			for _, peer := range peers {
